@@ -5,6 +5,7 @@ import os
 import pickle
 from typing import Any
 import numpy as np
+from scipy import sparse
 
 
 class Genetic_data_read(object):
@@ -71,8 +72,10 @@ class Genetic_data_read(object):
                 pos_id += 1
                 if pos_id >= (size_block - 1):
                     if if_save:
-                        savepath = str(chr)+'_LD_block_'+str(block_ids)+'.npy'
-                        np.save(savepath)
+                        savepath = str(chr)+'_LD_block_'+str(current_block)
+                        savepath = os.path.join(self._dirname, savepath)
+                        sparse.save_npz(savepath,
+                                        sparse.coo_matrix(genotypematrix))
                     yield genotypematrix
                     pos_id = 0
                     current_block += 1
