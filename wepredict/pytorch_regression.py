@@ -128,8 +128,8 @@ class L12Linear(_L12Norm):
 class pytorch_linear(object):
     """Penalized regresssion with L1/L2/L0 norm."""
 
-    def __init__(self, X, y, model_log, overwrite=False,
-                 type='b', mini_batch_size=5000, fraction_valid=0.1):
+    def __init__(self, X, y, X_valid, y_valid, model_log, overwrite=False,
+                 type='b', mini_batch_size=5000):
         """Penalized regression."""
         super(pytorch_linear, self).__init__()
         self.model_log = model_log
@@ -140,10 +140,10 @@ class pytorch_linear(object):
         self.output_dim = 1
         self.type = type
         self.mini_batch_size = mini_batch_size
-        self.fraction_valid = fraction_valid
-        assert mini_batch_size <= self.n
         self.X = X[self._shuffle_ids, :]
         self.y = y[self._shuffle_ids].reshape(self.n, 1)
+        self.X_valid = X_valid
+        self.y_valid = y_valid
         print("init X shape", self.X.shape)
         if not os.path.isfile(model_log):
             with open(model_log, 'wb') as f:
@@ -153,16 +153,6 @@ class pytorch_linear(object):
                 pickle.dump([], f)
         assert os.path.isfile(self.model_log)
         self._validation_sampling()
-
-    def _validation_sampling(self):
-        assert self.X is not None
-        assert self.y is not None
-        num_valid_samples = np.float(self.n*self.fraction_valid)
-        idx = np.random.randint(0, self.n, num_valid_samples)
-        self.X_valid = self.X[:, idx]
-        self.y_valid = self.y[:, idx]
-        self.X = np.delete(self.X, idx, axis=1)
-        self.y = np.delete(self.y, idx, axis=1)
 
     def _model_builder(self, penal, **kwargs):
         if penal == 'l1':
