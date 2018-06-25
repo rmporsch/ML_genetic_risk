@@ -55,13 +55,13 @@ class Genetic_data_read(object):
                     out[chr].append(rsids)
             return out
 
-    def block_iter(self, chr: int = 22) -> Any:
+    def block_iter(self, chr: int = 22, if_save: bool = True) -> Any:
         """Block iteration."""
         assert chr in self.chromosoms
         current_block = 0
         block_ids = self.groups[chr][current_block]
         size_block = len(block_ids)
-        genotypematrix = np.zeros((self.n, size_block))
+        genotypematrix = np.zeros((self.n, size_block), dtype=np.int8)
         pos_id = 0
         for snp, genotypes in self.plink_reader.iter_geno():
             if snp not in block_ids:
@@ -70,9 +70,13 @@ class Genetic_data_read(object):
                 genotypematrix[:, pos_id] = genotypes
                 pos_id += 1
                 if pos_id >= (size_block - 1):
+                    if if_save:
+                        savepath = str(chr)+'_LD_block_'+str(block_ids)+'.npy'
+                        np.save(savepath)
                     yield genotypematrix
                     pos_id = 0
                     current_block += 1
                     block_ids = self.groups[chr][current_block]
                     size_block = len(block_ids)
-                    genotypematrix = np.zeros((self.n, size_block))
+                    genotypematrix = np.zeros((self.n, size_block),
+                                              dtype=np.int8)
