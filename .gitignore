@@ -105,3 +105,18 @@ venv.bak/
 
 # data
 data
+*.lock
+*.pickle
+*.bed
+
+# latex
+*.loc
+*.fdb_latexmk
+*.synctex.gz
+*.pdf
+*.out
+*.aux
+*.fls
+*.toc
+*.snm
+*.nav
