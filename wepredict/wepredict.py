@@ -2,7 +2,7 @@
 import numpy as np
 import sklearn.linear_model as lm
 import dask.delayed as delayed
-import pytorch_regression as pyreg
+import wepredict.pytorch_regression as pyreg
 import dask
 import scipy.sparse as sparse
 from glob import glob
@@ -117,7 +117,7 @@ class wepredict(object):
             alpha_eval.append(np.corrcoef(combined_prediction[:, i],
                                           valid_pheno)[0, 1])
         block_performance = zip([str(i) for i in range(n_blocks)],
-                                np.array([k['accu'] for k in out]))
+                                np.array([k['accu'] for k in outcome]))
         block_performance = pd.DataFrame.from_items(block_performance)
         return {'Overall': alpha_eval, 'Block': block_performance}
 

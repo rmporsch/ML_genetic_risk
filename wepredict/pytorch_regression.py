@@ -224,8 +224,8 @@ class pytorch_linear(object):
             loss.backward()
             optimizer.step()
             if (_+1) % 100 == 0:
-                print("epoch {}, loss {}, norm {}".format(_, loss.item(),
-                                                          penalty.item()))
+                # print("epoch {}, loss {}, norm {}".format(_, loss.item(),
+                #                                           penalty.item()))
                 predict, penalty = model.forward(valid_x)
                 accu = self._accuracy(predict)
                 save_pred.append(accu)
