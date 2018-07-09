@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from torch.nn import functional as F
+from sklearn.preprocessing import scale
 
 
 def hard_sigmoid(x):
@@ -69,8 +70,9 @@ class L0Linear(_L0Norm):
         """Forward function with mask and penalty."""
         mask, penalty = self._get_mask()
         out = F.linear(input, self._origin.weight * mask, self._origin.bias)
-        m = nn.Sigmoid()
-        out = m(out)
+        # print(out)
+        # m = nn.Sigmoid()
+        # out = m(out)
         return out, penalty
 
 
@@ -120,19 +122,16 @@ class L12Linear(_L12Norm):
             out = F.linear(input, self._origin.weight, self._origin.bias)
         else:
             raise ValueError('wrong norm specified')
-        m = nn.Sigmoid()
-        out = m(out)
         return out, penalty
 
 
 class pytorch_linear(object):
     """Penalized regresssion with L1/L2/L0 norm."""
 
-    def __init__(self, X, y, X_valid, y_valid, model_log, overwrite=False,
-                 type='b', mini_batch_size=5000):
+    def __init__(self, X, y, X_valid, y_valid, overwrite=False,
+                 type='b', mini_batch_size=5000, if_shuffle=False):
         """Penalized regression."""
         super(pytorch_linear, self).__init__()
-        self.model_log = model_log
         self.n, self.input_dim = X.shape
         self.overwrite = overwrite
         self._shuffle_ids = np.arange(self.n)
@@ -140,19 +139,15 @@ class pytorch_linear(object):
         self.output_dim = 1
         self.type = type
         self.mini_batch_size = mini_batch_size
-        self.X = X[self._shuffle_ids, :]
-        self.y = y[self._shuffle_ids].reshape(self.n, 1)
-        self.X_valid = X_valid
-        self.y_valid = y_valid
-        print("init X shape", self.X.shape)
-        if not os.path.isfile(model_log):
-            with open(model_log, 'wb') as f:
-                pickle.dump([], f)
-        elif overwrite:
-            with open(model_log, 'wb') as f:
-                pickle.dump([], f)
-        assert os.path.isfile(self.model_log)
-        self._validation_sampling()
+        if if_shuffle:
+            self.X = X[self._shuffle_ids, :]
+            self.y = y[self._shuffle_ids].reshape(self.n, 1)
+        else:
+            self.X = X
+            self.y = y.reshape(self.n, 1)
+            # self.y = y
+        self.X_valid = scale(X_valid.astype(np.float32))
+        self.y_valid = scale(y_valid)
 
     def _model_builder(self, penal, **kwargs):
         if penal == 'l1':
@@ -163,7 +158,6 @@ class pytorch_linear(object):
             model = L0Linear(self.input_dim, self.output_dim, **kwargs)
         else:
             raise ValueError('incorrect norm specified')
-
         return model
 
     def _loss_function(self, labels, outputs):
@@ -178,9 +172,12 @@ class pytorch_linear(object):
 
     def _accuracy(self, predict):
         if self.type == 'c':
-            accu = np.corrcoef(self.y.flatten(),
-                               predict.data.numpy().flatten())**2
+            predict = predict.data.numpy().flatten()
+            y_valid = self.y_valid.flatten()
+            assert np.sum(~np.isfinite(predict)) == 0
+            accu = np.corrcoef(y_valid, predict)
             accu = accu[0][1]
+            accu = accu**2
         else:
             accu = np.mean(np.round(predict.data.numpy()) == self.y_valid)
         return accu
@@ -198,7 +195,10 @@ class pytorch_linear(object):
             if start > end:
                 bool_index = ~(bool_index)
             assert np.sum(bool_index) == self.mini_batch_size
-            yield x[bool_index, :], y[bool_index, :]
+            xyield = scale(x[bool_index, :].astype(np.float32))
+            yyield = scale(y[bool_index, :])
+            # yyield = scale(y[bool_index])
+            yield xyield, yyield
             start = np.abs(end)
             end = start + self.mini_batch_size
 
@@ -206,11 +206,15 @@ class pytorch_linear(object):
             epochs: int = 201, l_rate: float = 0.01, **kwargs):
         """Run regression with the given paramters."""
         model = self._model_builder(penal, **kwargs)
-        dataset = self._iterator(self.X, self.y)
+        dataset = self._iterator(self.X.astype(np.int32), self.y)
         optimizer = torch.optim.SGD(model.parameters(), lr=l_rate)
+        valid_x = Variable(torch.from_numpy(self.X_valid)).float()
         save_loss = list()
+        save_pred = list()
+        self.X = scale(self.X.astype(np.int32))
         for _ in range(epochs):
             xx, yy = next(dataset)
+            # xx, yy = self.X, self.y
             input = Variable(torch.from_numpy(xx)).float()
             labels = Variable(torch.from_numpy(yy)).float()
             optimizer.zero_grad()
@@ -222,38 +226,24 @@ class pytorch_linear(object):
             if (_+1) % 100 == 0:
                 print("epoch {}, loss {}, norm {}".format(_, loss.item(),
                                                           penalty.item()))
-                if np.allclose(save_loss[-50], loss.item(), 1e-4):
-                    break
+                predict, penalty = model.forward(valid_x)
+                accu = self._accuracy(predict)
+                save_pred.append(accu)
+                # if np.allclose(save_loss[-10], loss.item(), 1e-4):
+                #     break
             save_loss.append(loss.item())
-        alldata = Variable(torch.from_numpy(self.X_valid)).float()
-        predict, penalty = model.forward(alldata)
+        predict, penalty = model.forward(valid_x)
         accu = self._accuracy(predict)
-        print('Accuracy:', accu)
-        print('Paramters:')
         coef = []
         for name, param in model.named_parameters():
-            print(name)
-            print(param.data)
             coef.append(param.data.numpy())
         param = {}
+        prediction = predict.data.numpy().flatten()
         param['lambda'] = lamb
         param['epoch'] = epochs
         param['penal'] = penal
         param['type'] = self.type
-        self._write_model(param, coef, accu, 'torch_'+penal+'_'+self.type)
-
-    def _write_model(self, param, coef, score, model_name):
-        output = {}
-        output['param'] = param
-        output['coef'] = coef
-        output['score'] = score
-        output['time'] = str(datetime.datetime.now())
-        output['name'] = model_name
-        print(output)
-        if os.path.getsize(self.model_log) > 0:
-            feed = pickle.load(open(self.model_log, 'rb'))
-        else:
-            feed = []
-        with open(self.model_log, 'wb') as f:
-            feed.append(output)
-            pickle.dump(feed, f)
+        param['loss'] = save_loss
+        param['pred'] = save_pred
+        return {'accu': accu, 'param': param,
+                'pred': prediction, 'coef': coef}

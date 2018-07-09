@@ -29,7 +29,7 @@ def get_test_data(d_path: str = 'tensor/data') -> Tuple[Any, Any]:
     y = encoder.transform(y)
     return X, y
 
-
+    
 if __name__ == '__main__':
     DATA_PATH = 'tensor/data'
     model_comparision_file = os.path.join(DATA_PATH, 'model.comparisions')

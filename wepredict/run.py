@@ -4,7 +4,6 @@ import numpy as np
 import os
 from pytorch_regression import pytorch_linear
 from tensorflow_penal_regression import tensorflow_models
-from pytorch_regression import pytorch_linear
 from sklearn_penal_regression import sklearn_models
 from sklearn.preprocessing import scale
 from typing import Any
@@ -39,11 +38,11 @@ class DataProcessing(object):
 
 if __name__ == '__main__':
     # Downloads
-    download_path = 'tensor/data/'
+    download_path = 'data/'
     sim_path = 'data/phenotypes/simulated_chr10.txt'
     downloader = genetic_testdata(download_path)
-    plink_stem = downloader.download_1kg_chr22()
-    # plink_stem = downloader.download_ukb_chr10()
+    # plink_stem = downloader.download_1kg_chr22()
+    plink_stem = downloader.download_ukb_chr10()
     ld_blocks = downloader.download_ldblocks()
     pheno_file = downloader.download_file(sim_path)
     # Models
@@ -57,16 +56,17 @@ if __name__ == '__main__':
     y = np.random.random(1092)
     # Reading of genetic data
     genetic_process = Genetic_data_read(plink_stem, ld_blocks)
-    out = genetic_process.block_iter(22)
+    out = genetic_process.block_iter(10)
     # Trial run for a single LD block
-    X = next(out)
-    X = scale(X)
-    lamb = 0.01
-    # Setting up the model
-    model_comparision_file = os.path.join(download_path, 'model.comparisions3')
-    for i, m in models.items():
-        print(i)
-        pytorchmodel = m(X, y, model_comparision_file,
-                         False, type='c', mini_batch_size=100)
-        pytorchmodel.run(penal='l1')
-        pytorchmodel.run(penal='l2')
+    for i in out:
+        X = i
+    # X = scale(X)
+    # lamb = 0.01
+    # # Setting up the model
+    # model_comparision_file = os.path.join(download_path, 'model.comparisions3')
+    # for i, m in models.items():
+    #     print(i)
+    #     pytorchmodel = m(X, y, model_comparision_file,
+    #                      False, type='c', mini_batch_size=100)
+    #     pytorchmodel.run(penal='l1')
+    #     pytorchmodel.run(penal='l2')
