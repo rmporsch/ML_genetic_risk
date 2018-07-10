@@ -182,7 +182,7 @@ class pytorch_linear(object):
             accu = np.mean(np.round(predict.data.numpy()) == self.y_valid)
         return accu
 
-    def _iterator(self, x, y):
+    def iterator(self):
         start = 0
         end = self.mini_batch_size
         index = np.arange(self.n)
@@ -195,26 +195,28 @@ class pytorch_linear(object):
             if start > end:
                 bool_index = ~(bool_index)
             assert np.sum(bool_index) == self.mini_batch_size
-            xyield = scale(x[bool_index, :].astype(np.float32))
-            yyield = scale(y[bool_index, :])
-            # yyield = scale(y[bool_index])
-            yield xyield, yyield
+            xyield = np.zeros((self.mini_batch_size,
+                               self.input_dim),
+                              dtype=float)
+            for u, i in np.ndenumerate(index[bool_index]):
+                xyield[u] = self.X[i]
+            xyield = scale(xyield)
+            yyield = scale(self.y[bool_index, :])
             start = np.abs(end)
             end = start + self.mini_batch_size
+            yield xyield, yyield
 
     def run(self, penal: str = 'l1', lamb: float = 0.01,
             epochs: int = 201, l_rate: float = 0.01, **kwargs):
         """Run regression with the given paramters."""
         model = self._model_builder(penal, **kwargs)
-        dataset = self._iterator(self.X.astype(np.int32), self.y)
+        dataset = self.iterator()
         optimizer = torch.optim.SGD(model.parameters(), lr=l_rate)
         valid_x = Variable(torch.from_numpy(self.X_valid)).float()
         save_loss = list()
         save_pred = list()
-        self.X = scale(self.X.astype(np.int32))
         for _ in range(epochs):
             xx, yy = next(dataset)
-            # xx, yy = self.X, self.y
             input = Variable(torch.from_numpy(xx)).float()
             labels = Variable(torch.from_numpy(yy)).float()
             optimizer.zero_grad()
