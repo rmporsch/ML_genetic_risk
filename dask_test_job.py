@@ -44,8 +44,8 @@ if __name__ == '__main__':
         mask[index_valid] = False
         outfolder = ''
     else:
-        cluster = PBSCluster(processes=2,
-                threads=6, memory="120GB",
+        cluster = PBSCluster(processes=1,
+                threads=12, memory="120GB",
                 queue='large',
                 local_directory='$TMPDIR',
                 resource_spec='select=1:ncpus=12:mem=120gb',
@@ -66,7 +66,7 @@ if __name__ == '__main__':
         if os.path.isfile(index_file):
             index_valid = pickle.load(open(index_file, 'rb'))
         else:
-            index_valid = np.random.choice(range(len(phenotype)), len(phenotype)*0.1, replace=False)
+            index_valid = np.random.choice(range(len(phenotype)), len(phenotype)*0.05, replace=False)
             pickle.dump(index_valid, open(index_file, 'wb'))
         mask = np.ones(len(phenotype), dtype=bool)
         mask[index_valid] = False
@@ -74,12 +74,15 @@ if __name__ == '__main__':
 
 
     models = ['l1', 'l2', 'l0']
+    param = {'l1': {'mini_batch': 250, 'l_rate': 0.001, 'epochs': 201},
+             'l2': {'mini_batch': 250, 'l_rate': 0.001, 'epochs': 201},
+             'l0': {'mini_batch': 250, 'l_rate': 0.01, 'epochs': 201}}
     for norm in models:
+        specific_param = param[norm]
         model_save = os.path.join(outfolder, 'models_'+norm+'.pickle')
         eval_save = os.path.join(outfolder, 'eval_'+norm+'.pickle')
-        monster.generate_DAG(phenotype, index_valid, alphas, norm)
+        monster.generate_DAG(phenotype, index_valid, alphas, norm, **specific_param)
         out = monster.compute()
         save_pickle(out, model_save)
         oo = monster.evaluat_blocks(out, phenotype[~mask])
         save_pickle(oo, eval_save)
-    # cluster.close()
