@@ -211,7 +211,6 @@ class pytorch_linear(object):
         valid_x = Variable(torch.from_numpy(self.X_valid)).float()
         save_loss = list()
         save_pred = list()
-        self.X = scale(self.X.astype(np.int32))
         for _ in range(epochs):
             xx, yy = next(dataset)
             # xx, yy = self.X, self.y
