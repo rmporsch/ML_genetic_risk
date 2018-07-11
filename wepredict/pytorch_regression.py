@@ -174,7 +174,8 @@ class pytorch_linear(object):
         if self.type == 'c':
             predict = predict.data.numpy().flatten()
             y_valid = self.y_valid.flatten()
-            assert np.sum(~np.isfinite(predict)) == 0
+            if not (np.sum(~np.isfinite(predict)) == 0):
+                return 0.0
             accu = np.corrcoef(y_valid, predict)
             accu = accu[0][1]
             accu = accu**2
@@ -234,6 +235,7 @@ class pytorch_linear(object):
                 # if np.allclose(save_loss[-10], loss.item(), 1e-4):
                 #     break
             save_loss.append(loss.item())
+        del xx, yy
         predict, penalty = model.forward(valid_x)
         accu = self._accuracy(predict)
         coef = []
