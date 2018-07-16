@@ -80,7 +80,7 @@ class wepredict(object):
         model = pyreg.pytorch_linear(X, y, X_valid, y_valid, type='c',
                                      mini_batch_size=mini_batch)
         for a in alphas:
-            model_output = model.run(penal=norm, epochs=epochs, l_rate=l_rate)
+            model_output = model.run(penal=norm, epochs=epochs, l_rate=l_rate, lamb=float(a))
             models_pytorch.append(model_output)
         pred_matrix = [k['pred'] for k in models_pytorch]
         pred_matrix = np.stack(pred_matrix, axis=1)

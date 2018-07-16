@@ -12,8 +12,7 @@ sys.path.insert(0, os.path.abspath('.'))
 
 def save_pickle(object, path):
     """Save obejct."""
-    pickle.dump(object, open(path, 'wb'))
-
+    pickle.dump(object, open(path, 'wb')) 
 
 def load_pickle(path):
     """Save obejct."""
@@ -44,12 +43,12 @@ if __name__ == '__main__':
         mask[index_valid] = False
         outfolder = ''
     else:
-        cluster = PBSCluster(processes=1,
-                threads=12, memory="120GB",
+        cluster = PBSCluster(processes=4,
+                cores=5, memory="120GB",
                 queue='large',
                 local_directory='$TMPDIR',
                 resource_spec='select=1:ncpus=12:mem=120gb',
-                walltime='12:00:00')
+                walltime='84:00:00')
         print(cluster.job_script())
         cluster.scale(3)
         client = Client(cluster)
@@ -57,7 +56,14 @@ if __name__ == '__main__':
 
         folder = '/home2/groups/pcsham/users/rmporsch/sparse_matrix_ukb_chr10/'
         pheno_file = '/home/groups2/pcsham/users/rmporsch/simualted_ukb_chr10_phenotype/smaller_pheno.tab'
-        alphas = np.arange(0.2, 2, 0.4)
+        lambfile = '/home/tshmak/WORK/Projects/bigdata/ForRobert/lasso_benchmark_lambda.txt'
+        with open(lambfile, 'r') as f:
+            alphas = []
+            next(f)
+            for line in f:
+                alphas.append(float(line))
+        n_alphas = 10
+        alphas = np.random.choice(alphas, n_alphas, replace=False)
         monster = wepredict(folder+'/10*', cluster, False)
         pheno = pd.read_csv(pheno_file, sep='\t')
         phenotype = pheno['V1'].values
@@ -74,9 +80,10 @@ if __name__ == '__main__':
 
 
     models = ['l1', 'l2', 'l0']
-    param = {'l1': {'mini_batch': 250, 'l_rate': 0.001, 'epochs': 201},
-             'l2': {'mini_batch': 250, 'l_rate': 0.001, 'epochs': 201},
-             'l0': {'mini_batch': 250, 'l_rate': 0.01, 'epochs': 201}}
+    models = ['l1', 'l0']
+    param = {'l1': {'mini_batch': 10000, 'l_rate': 0.0001, 'epochs': 201},
+             'l2': {'mini_batch': 10000, 'l_rate': 0.0001, 'epochs': 201},
+             'l0': {'mini_batch': 10000, 'l_rate': 0.001, 'epochs': 201}}
     for norm in models:
         specific_param = param[norm]
         model_save = os.path.join(outfolder, 'models_'+norm+'.pickle')

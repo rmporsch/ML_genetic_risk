@@ -212,11 +212,13 @@ class pytorch_linear(object):
         """Run regression with the given paramters."""
         model = self._model_builder(penal, **kwargs)
         dataset = self.iterator()
-        optimizer = torch.optim.SGD(model.parameters(), lr=l_rate)
+        optimizer = torch.optim.Adagrad(model.parameters(), lr=l_rate)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.1)
         valid_x = Variable(torch.from_numpy(self.X_valid)).float()
         save_loss = list()
         save_pred = list()
         for _ in range(epochs):
+            scheduler.step()
             xx, yy = next(dataset)
             input = Variable(torch.from_numpy(xx)).float()
             labels = Variable(torch.from_numpy(yy)).float()
