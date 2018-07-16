@@ -103,7 +103,7 @@ class wepredict(object):
         return {'pred': pred_matrix, 'model': models_pytorch,
                 'accu': accu_alphas, 'pheno': y_valid}
 
-    def generate_DAG(self, phenotype, index_valid, alphas, norm):
+    def generate_DAG(self, phenotype, index_valid, alphas, norm, **kwargs):
         """Get future objects."""
         outcome = []
         for ff in self.files:
@@ -114,7 +114,7 @@ class wepredict(object):
                                                  sample['training_y'],
                                                  sample['valid_x'],
                                                  sample['valid_y'],
-                                                 alphas, norm)
+                                                 alphas, norm, **kwargs)
             outcome.append(pred)
         self.outcome = outcome
 

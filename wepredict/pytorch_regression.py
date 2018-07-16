@@ -172,7 +172,8 @@ class pytorch_linear(object):
         if self.type == 'c':
             predict = predict.data.numpy().flatten()
             y_valid = self.y_valid.flatten()
-            assert np.sum(~np.isfinite(predict)) == 0
+            if not (np.sum(~np.isfinite(predict)) == 0):
+                return 0.0
             accu = np.corrcoef(y_valid, predict)
             accu = accu[0][1]
             accu = accu**2
@@ -210,10 +211,15 @@ class pytorch_linear(object):
         model = self._model_builder(penal, **kwargs)
         dataset = self.iterator()
         optimizer = torch.optim.Adagrad(model.parameters(), lr=l_rate)
+<<<<<<< HEAD
+=======
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.1)
+>>>>>>> 928dafab5632a27a181bdc848ada0a4d418c0df4
         valid_x = Variable(torch.from_numpy(self.X_valid)).float()
         save_loss = list()
         save_pred = list()
         for _ in range(epochs):
+            scheduler.step()
             xx, yy = next(dataset)
             input = Variable(torch.from_numpy(xx)).float()
             labels = Variable(torch.from_numpy(yy)).float()
