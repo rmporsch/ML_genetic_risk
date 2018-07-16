@@ -209,7 +209,7 @@ class pytorch_linear(object):
         """Run regression with the given paramters."""
         model = self._model_builder(penal, **kwargs)
         dataset = self.iterator()
-        optimizer = torch.optim.SGD(model.parameters(), lr=l_rate)
+        optimizer = torch.optim.Adagrad(model.parameters(), lr=l_rate)
         valid_x = Variable(torch.from_numpy(self.X_valid)).float()
         save_loss = list()
         save_pred = list()

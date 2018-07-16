@@ -16,37 +16,49 @@ def load_pickle(path):
 
 if __name__ == '__main__':
     testfile = 'data/1kg_LD_blocks/22_LD_block_0.npz'
-    # testfile = 'data/10_LD_block_20.npz'
-    # monster = wepredict(testfile, False)
-    # index_valid_test = np.random.randint(0, 1092, 100)
-    # alphas = np.arange(0.01, 0.2, 0.02)
-    # X = monster.reader_binary(testfile)
-    # y = monster.sim(X)
-    # sample = monster.get_training_valid_sample(X, y, index_valid_test)
-    # # model_output_l1 = compute_pytorch_l1(sample[0], sample[1], sample[2],
-    # #                                   sample[3], alphas, mini_batch_size=400)
-    # # model_output_l2 = compute_pytorch_l2(sample[0], sample[1], sample[2],
-    # #                                    sample[3], alphas, mini_batch_size=400)
-    # model_output_l0 = monster.compute_pytorch(sample['training_x'],
-    #                                           sample['training_y'],
-    #                                           sample['valid_x'],
-    #                                           sample['valid_y'], alphas, 'l0',
-    #                                           mini_batch=250, l_rate=0.001,
-    #                                           epochs=201)
-    # print('L1', model_output_l1['accu'])
+    monster = wepredict(testfile, False)
+    train_index, valid_index, test_index = monster.generate_valid_test_data(
+        1092, 0.10, 0.05)
+    alphas = np.arange(0.01, 0.2, 0.02)
+    X = monster.reader_binary(testfile)
+    y = monster.sim(X)
+    sample = monster.get_training_valid_test_sample(X, y, train_index,
+                                                    valid_index,
+                                                    test_index)
+    model_output_l1 = monster.compute_pytorch(sample['training_x'],
+                                              sample['training_y'],
+                                              sample['valid_x'],
+                                              sample['valid_y'], alphas, 'l1',
+                                              mini_batch=500, l_rate=0.001,
+                                              epochs=301)
+    model_output_l0 = monster.compute_pytorch(sample['training_x'],
+                                              sample['training_y'],
+                                              sample['valid_x'],
+                                              sample['valid_y'], alphas, 'l0',
+                                              mini_batch=500, l_rate=0.001,
+                                              epochs=301)
+    print('L1', model_output_l1['accu'])
     # print('L2', model_output_l2['accu'])
-    # print('L0', model_output_l0['accu'])
-    # # plot Sigmoid
-    # save_pickle(model_output_l0, 'testing.pickle')
-    model_output_l0 = load_pickle('testing.pickle')
+    print('L0', model_output_l0['accu'])
+    # plot Sigmoid
+    save_pickle(model_output_l0, 'testing_l0.pickle')
+    save_pickle(model_output_l1, 'testing_l1.pickle')
+    # model_output_l0 = load_pickle('testing_l0.pickle')
+    # model_output_l1 = load_pickle('testing_l1.pickle')
+    best_l0 = np.argmax(model_output_l0['accu'])
+    best_l1 = np.argmax(model_output_l1['accu'])
+    print('L0', model_output_l0['accu'][best_l0])
+    print('L1', model_output_l1['accu'][best_l1])
+    out_l0 = monster.evaluate_test(sample['test_x'], sample['test_y'],
+                                model_output_l0['model'][best_l0]['coef'][1])
+    out_l1 = monster.evaluate_test(sample['test_x'], sample['test_y'],
+                                model_output_l1['model'][best_l1]['coef'][0])
+    print('L1', out_l1['accu'])
+    print('L0', out_l0['accu'])
     x = [x for x in range(model_output_l0['model'][0]['param']['epoch'])]
-    mm = model_output_l0['model']
-    # [print(k) for k in model_output_l0['accu']]
-    # fig, ax = plt.subplots(len(mm), 1)
-    # # ax.plot(x, model_output_l1['param']['loss'], 'r')
-    # # ax.plot(x, model_output_l2['param']['loss'], 'b')
-    # for u, i in enumerate(mm):
-    #     ax[u].plot(x, i['param']['loss'])
-    # fig.show()
-    plt.plot(x, mm[0]['param']['loss'])
-    plt.show()
+    fig, ax = plt.subplots(1, 2)
+    best = [best_l0, best_l1]
+    for i, m in enumerate([model_output_l0, model_output_l1]):
+        mm = m['model']
+        ax[i].plot(x, m[best[i]]['param']['loss'])
+    # plt.show()

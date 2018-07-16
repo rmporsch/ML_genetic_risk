@@ -7,6 +7,7 @@ import dask
 import scipy.sparse as sparse
 from glob import glob
 import pandas as pd
+from sklearn.model_selection import train_test_split
 
 class wepredict(object):
     """Allow predction via LD blocks."""
@@ -43,14 +44,28 @@ class wepredict(object):
             zip([str(i) for i in range(len(simu))], simu))
         return overview.compute()
 
-    def get_training_valid_sample(self, X, y, index_valid):
+    def get_training_valid_test_sample(self, X, y, index_train,  index_valid,
+                                       index_test):
         """Get training and valid samples."""
-        mask = np.ones(len(y), dtype=bool)
-        mask[index_valid] = False
-        return {'training_x': X[mask, :],
-                'training_y': y[mask],
-                'valid_x': X[~mask, :],
-                'valid_y': y[~mask]}
+        X_training = X[index_train, :]
+        X_valid = X[index_valid, :]
+        X_test = X[index_test, :]
+        y_training = y[index_train]
+        y_valid = y[index_valid]
+        y_test = y[index_test]
+        return {'training_x': X_training,
+                'training_y': y_training,
+                'valid_x': X_valid,
+                'valid_y': y_valid,
+                'test_x': X_test,
+                'test_y': y_test}
+
+    def generate_valid_test_data(self, n, n_valid, n_test):
+        """Give traing, valid and testing index."""
+        n_index = np.arange(0, n)
+        x_train, x_test = train_test_split(n_index, test_size=n_test)
+        x_train, x_valid = train_test_split(x_train, test_size=n_valid)
+        return (x_train, x_valid, x_test)
 
     def compute_enet(self, X, y, X_valid, y_valid, alphas):
         """Compute Elassitc Net."""
@@ -103,7 +118,13 @@ class wepredict(object):
             outcome.append(pred)
         self.outcome = outcome
 
-    def evaluat_blocks(self, outcome, valid_pheno):
+    def evaluate_test(self, X_test, y_test, coef):
+        """Evaluate performance on test data."""
+        y_pred = X_test.dot(coef.T).flatten()
+        accu = np.corrcoef(y_pred, y_test)[0, 1]
+        return {'accu': accu, 'pred': y_pred}
+
+    def evaluat_blocks_valid(self, outcome, valid_pheno):
         """Evaluate performance of the combined LD blocks."""
         # assert isinstance(outcome, list)
         combined_prediction = sum([k['pred'] for k in outcome])
