@@ -1,7 +1,5 @@
 """Class and function for penalized regressions with tensorflow."""
-import os
 import numpy as np
-import pickle
 import datetime
 import torch
 import torch.nn as nn
@@ -234,6 +232,7 @@ class pytorch_linear(object):
                 # if np.allclose(save_loss[-10], loss.item(), 1e-4):
                 #     break
             save_loss.append(loss.item())
+        del xx, yy
         predict, penalty = model.forward(valid_x)
         accu = self._accuracy(predict)
         coef = []
@@ -242,6 +241,7 @@ class pytorch_linear(object):
         param = {}
         prediction = predict.data.numpy().flatten()
         param['lambda'] = lamb
+        param['time'] = datetime.datetime.now()
         param['epoch'] = epochs
         param['penal'] = penal
         param['type'] = self.type

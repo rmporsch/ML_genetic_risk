@@ -8,11 +8,10 @@ import scipy.sparse as sparse
 from glob import glob
 import pandas as pd
 
-
 class wepredict(object):
     """Allow predction via LD blocks."""
 
-    def __init__(self, file_path: str, cluster, testing: bool):
+    def __init__(self, file_path: str, testing: bool):
         """Allow predction via LD blocks."""
         super(wepredict, self).__init__()
         self.files = glob(file_path)
@@ -21,11 +20,11 @@ class wepredict(object):
         if testing:
             self.files = np.random.choice(self.files, 3)
 
-    def _reader_binary(self, file):
+    def reader_binary(self, file):
         mat = sparse.load_npz(file)
         return mat.toarray()
 
-    def _sim(self, X):
+    def sim(self, X):
         effect = np.random.normal(size=X.shape[1])
         index_causal = np.random.randint(0, len(effect),
                                          int(np.floor(len(effect)*0.8)))
@@ -44,7 +43,7 @@ class wepredict(object):
             zip([str(i) for i in range(len(simu))], simu))
         return overview.compute()
 
-    def _get_training_valid_sample(self, X, y, index_valid):
+    def get_training_valid_sample(self, X, y, index_valid):
         """Get training and valid samples."""
         mask = np.ones(len(y), dtype=bool)
         mask[index_valid] = False
@@ -80,7 +79,8 @@ class wepredict(object):
         model = pyreg.pytorch_linear(X, y, X_valid, y_valid, type='c',
                                      mini_batch_size=mini_batch)
         for a in alphas:
-            model_output = model.run(penal=norm, epochs=epochs, l_rate=l_rate)
+            model_output = model.run(penal=norm, epochs=epochs, l_rate=l_rate,
+                                     lamb=float(a))
             models_pytorch.append(model_output)
         pred_matrix = [k['pred'] for k in models_pytorch]
         pred_matrix = np.stack(pred_matrix, axis=1)
