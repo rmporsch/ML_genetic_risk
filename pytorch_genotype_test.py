@@ -18,7 +18,7 @@ if __name__ == '__main__':
     testfile = 'data/1kg_LD_blocks/22_LD_block_0.npz'
     monster = wepredict(testfile, False)
     train_index, valid_index, test_index = monster.generate_valid_test_data(
-        1092, 0.10, 0.05)
+        1092, 0.20, 0.10)
     alphas = np.arange(0.01, 0.2, 0.02)
     X = monster.reader_binary(testfile)
     y = monster.sim(X)
@@ -47,11 +47,11 @@ if __name__ == '__main__':
     # model_output_l1 = load_pickle('testing_l1.pickle')
     best_l0 = np.argmax(model_output_l0['accu'])
     best_l1 = np.argmax(model_output_l1['accu'])
-    print('L0', model_output_l0['accu'][best_l0])
-    print('L1', model_output_l1['accu'][best_l1])
-    out_l0 = monster.evaluate_test(sample['test_x'], sample['test_y'],
+    print('test L0', model_output_l0['accu'][best_l0])
+    print('test L1', model_output_l1['accu'][best_l1])
+    out_l0 = monster.evaluate_test(X[test_index, :], y[test_index],
                                 model_output_l0['model'][best_l0]['coef'][1])
-    out_l1 = monster.evaluate_test(sample['test_x'], sample['test_y'],
+    out_l1 = monster.evaluate_test(X[test_index, :], y[test_index],
                                 model_output_l1['model'][best_l1]['coef'][0])
     print('L1', out_l1['accu'])
     print('L0', out_l0['accu'])
@@ -60,5 +60,5 @@ if __name__ == '__main__':
     best = [best_l0, best_l1]
     for i, m in enumerate([model_output_l0, model_output_l1]):
         mm = m['model']
-        ax[i].plot(x, m[best[i]]['param']['loss'])
-    # plt.show()
+        ax[i].plot(x, mm[best[i]]['param']['loss'])
+    fig.show()

@@ -123,3 +123,8 @@ data
 
 # dask
 *.dirlock
+
+# stuff
+*.idea
+
+*venv*
