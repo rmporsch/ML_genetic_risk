@@ -10,6 +10,21 @@ import logging
 
 lg = logging.getLogger(__name__)
 
+def get_genotypes(self, chr, rsid, plink_path, sub_in):
+    reader = PyPlink(plink_path)
+    n = reader.get_nb_samples()
+    genotypematrix = np.zeros((n, len(rsid)), dtype=np.int8)
+    pos_index = 0
+    for snp, genotype in reader.iter_geno_marker(rsid):
+        if snp not in rsid:
+            continue
+        else:
+            genotypematrix[:, pos_index] = genotype[sub_in]
+            pos_index += 1
+    reader.close()
+    return genotypematrix
+
+
 class Genetic_data_read(object):
     """Provides batch reading of plink Files."""
 
@@ -103,46 +118,3 @@ class Genetic_data_read(object):
                          ].index.values
                     out[chr].append(rsids)
             return out
-
-    def block_read(self, chr: int, rsid: list) -> Any:
-        """Block read."""
-        assert chr in self.chromosoms
-        genotypematrix = np.zeros((self.n, len(rsid)), dtype=np.int8)
-        pos_index = 0
-        reader = PyPlink(self.plink_file)
-        for snp, genotypes in reader.iter_geno_marker(rsid):
-            if snp not in rsid:
-                continue
-            else:
-                genotypematrix[:, pos_index] = genotypes[self.sub_in]
-            pos_index += 1
-        reader.close()
-        return genotypematrix
-
-    def block_iter(self, chr: int = 22, if_save: bool = True) -> Any:
-        """Block iteration."""
-        assert chr in self.chromosoms
-        current_block = 0
-        block_ids = self.groups[chr][current_block]
-        size_block = len(block_ids)
-        genotypematrix = np.zeros((self.n, size_block), dtype=np.int8)
-        pos_id = 0
-        for snp, genotypes in self.plink_reader.iter_geno():
-            if snp not in block_ids:
-                continue
-            else:
-                genotypematrix[:, pos_id] = genotypes[self.sub_in]
-                pos_id += 1
-                if pos_id >= (size_block - 1):
-                    if if_save:
-                        savepath = str(chr)+'_LD_block_'+str(current_block)
-                        savepath = os.path.join(self._dirname, savepath)
-                        sparse.save_npz(savepath,
-                                        sparse.coo_matrix(genotypematrix))
-                    yield genotypematrix
-                    pos_id = 0
-                    current_block += 1
-                    block_ids = self.groups[chr][current_block]
-                    size_block = len(block_ids)
-                    genotypematrix = np.zeros((self.n, size_block),
-                                              dtype=np.int8)
