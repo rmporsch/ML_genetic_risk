@@ -39,7 +39,7 @@ def torch_model(x_train, y_train, x_valid, y_valid, alphas, regu):
                                  type='c', mini_batch_size=50)
     outcome = list()
     for a in alphas:
-        outcome.append(torch_model.run(regu, float(a), epochs=110))
+        outcome.append(torch_model.run(regu, float(a), epochs=200))
 
     predictions = list()
     for i in outcome:
@@ -50,9 +50,9 @@ def torch_model(x_train, y_train, x_valid, y_valid, alphas, regu):
 
 
 if __name__ == '__main__':
-    n = 100000
+    n = 1000
     p = 1000
-    null_prop = 0.98
+    null_prop = 0.99
     y, pred = sim(n, p, null_prop)
     # alpha_values = np.arange(0.001, 0.01, 0.001)
     alpha_values = [0.5]
@@ -65,13 +65,14 @@ if __name__ == '__main__':
     # print('sklearn best:', skoutput)
 
     regus = ['l0', 'l1']
-    sample_limit = np.logspace(2, 5, 10, dtype=int)
+    sample_limit = np.logspace(2, 4, 10, dtype=int)
+    sample_limit = [1001]
     out = dict()
     out['l1'] = list()
     out['l0'] = list()
     for s in sample_limit:
         for l in regus:
-            alpha_values = [2.0] if l == 'l0' else [0.1]
+            alpha_values = [0.01] if l == 'l0' else [0.01]
             torch_out = torch_model(x_train[0:int(s), :], y_train[0:int(s)],
                                     x_test, y_test, alpha_values, regu=l)
             out[l].append(torch_out)
