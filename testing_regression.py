@@ -50,8 +50,8 @@ def torch_model(x_train, y_train, x_valid, y_valid, alphas, regu):
 
 
 if __name__ == '__main__':
-    n = 10000
-    p = 10000
+    n = 1000
+    p = 1000
     null_prop = 0.99
     y, pred = sim(n, p, null_prop)
     # alpha_values = np.arange(0.001, 0.01, 0.001)
@@ -66,6 +66,7 @@ if __name__ == '__main__':
 
     regus = ['l0', 'l1']
     sample_limit = np.logspace(2, 4, 10, dtype=int)
+    sample_limit = [1001]
     out = dict()
     out['l1'] = list()
     out['l0'] = list()

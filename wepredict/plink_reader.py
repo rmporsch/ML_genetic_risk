@@ -10,7 +10,7 @@ import logging
 
 lg = logging.getLogger(__name__)
 
-def get_genotypes(self, chr, rsid, plink_path, sub_in):
+def get_genotypes(chr, rsid, plink_path, sub_in):
     reader = PyPlink(plink_path)
     n = reader.get_nb_samples()
     genotypematrix = np.zeros((n, len(rsid)), dtype=np.int8)

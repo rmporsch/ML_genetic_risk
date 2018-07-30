@@ -7,6 +7,7 @@ from torch.autograd import Variable
 from sklearn.preprocessing import scale
 import logging
 from wepredict.l0_norm import L0Linear
+from memory_profiler import profile
 from sklearn.utils import shuffle
 
 lg = logging.getLogger(__name__)
@@ -88,14 +89,13 @@ class RegL1(nn.Module):
 class pytorch_linear(object):
     """Penalized regresssion with L1/L2/L0 norm."""
 
-    def __init__(self, X, y, X_valid, y_valid, overwrite=False,
+    @profile
+    def __init__(self, X, y, X_valid, y_valid,
                  type='b', mini_batch_size=5000, if_shuffle=False):
         """Penalized regression."""
         super(pytorch_linear, self).__init__()
         self.n, self.input_dim = X.shape
-        self.overwrite = overwrite
         self._shuffle_ids = np.arange(self.n)
-        np.random.shuffle(self._shuffle_ids)
         self.output_dim = 1
         self.type = type
         self.mini_batch_size = mini_batch_size
@@ -171,6 +171,7 @@ class pytorch_linear(object):
             end = start + self.mini_batch_size
             yield xyield, yyield, iter_over_all
 
+    @profile
     def run(self, penal: str = 'l1', lamb: float = 0.01,
             epochs: int = 201, l_rate: float = 0.01, **kwargs):
         """Run regression with the given paramters."""
