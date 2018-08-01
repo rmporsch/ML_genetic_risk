@@ -1,13 +1,14 @@
 import numpy as np
 from sklearn.linear_model import lasso_path
 import matplotlib.pyplot as plt
-import logging as lg
+import logging
 from sklearn.preprocessing import scale
 from sklearn.model_selection import train_test_split
 from wepredict.pytorch_regression import pytorch_linear
 
-# lg.basicConfig(level=lg.DEBUG)
 
+lg = logging.getLogger(__name__)
+lg.setLevel(logging.INFO)
 
 def sim(n, p, null_prop):
     lg.info('n: %s, p: %s', n, p)
@@ -15,7 +16,7 @@ def sim(n, p, null_prop):
     for i in range(p):
         pred.append(np.random.normal(0, 1, n))
     pred = np.column_stack(pred)
-    beta = np.random.normal(0, 0.1, p)
+    beta = np.random.normal(0, 0.1**2, p)
     null_index = np.random.choice(range(p),int(p*null_prop),
                      replace=False)
     beta[null_index] = 0
@@ -38,8 +39,11 @@ def torch_model(x_train, y_train, x_valid, y_valid, alphas, regu):
     torch_model = pytorch_linear(x_train, y_train, x_valid, y_valid,
                                  type='c', mini_batch_size=50)
     outcome = list()
+    if len(alphas) == 1:
+        lg.warning('Only one alpha value used')
     for a in alphas:
-        outcome.append(torch_model.run(regu, float(a), epochs=200))
+        outcome.append(torch_model.run(regu, float(a), epochs=400,
+                                       logging_freq=25))
 
     predictions = list()
     for i in outcome:
@@ -50,8 +54,8 @@ def torch_model(x_train, y_train, x_valid, y_valid, alphas, regu):
 
 
 if __name__ == '__main__':
-    n = 1000
-    p = 1000
+    n = 10000
+    p = 10000
     null_prop = 0.99
     y, pred = sim(n, p, null_prop)
     # alpha_values = np.arange(0.001, 0.01, 0.001)
@@ -61,12 +65,10 @@ if __name__ == '__main__':
                                                         test_size=0.1,
                                                         random_state=42)
     del pred
-    # skoutput = sklearn_model(x_train, y_train, x_test, y_test, alpha_values)
-    # print('sklearn best:', skoutput)
 
     regus = ['l0', 'l1']
     sample_limit = np.logspace(2, 4, 10, dtype=int)
-    sample_limit = [1001]
+    assert sample_limit[-1] == n
     out = dict()
     out['l1'] = list()
     out['l0'] = list()
@@ -76,5 +78,8 @@ if __name__ == '__main__':
             torch_out = torch_model(x_train[0:int(s), :], y_train[0:int(s)],
                                     x_test, y_test, alpha_values, regu=l)
             out[l].append(torch_out)
-            print('Best Torch model', l, ':', torch_out.accu, 'with', s)
+            lg.info('Best Torch model %s: %s with %s', l, torch_out.accu, s)
 
+    import pickle
+    with open('l1l0_by_samplesize.pickle', 'wb') as f:
+        pickle.dump(out, f)

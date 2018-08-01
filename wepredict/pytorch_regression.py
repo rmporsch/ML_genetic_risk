@@ -47,6 +47,12 @@ class ResultCollector(object):
         self.iter_accu_valid.append(pred_valid)
 
     def add_parameters(self, coefs):
+        """
+        Append parameters to result class.
+
+        :param coefs: paramter class from PyTorch
+        :return: None
+        """
         out = {}
         for name, param in coefs:
             new_name = name.replace('_origin.', '')
@@ -89,7 +95,6 @@ class RegL1(nn.Module):
 class pytorch_linear(object):
     """Penalized regresssion with L1/L2/L0 norm."""
 
-    @profile
     def __init__(self, X, y, X_valid, y_valid,
                  type='b', mini_batch_size=5000, if_shuffle=False):
         """Penalized regression."""
@@ -141,6 +146,11 @@ class pytorch_linear(object):
         return accu
 
     def iterator(self):
+        """
+        Iterator over x,y paramters with given batch size.
+
+        :return: None
+        """
         start = 0
         end = self.mini_batch_size
         index = np.arange(self.n)
@@ -171,10 +181,18 @@ class pytorch_linear(object):
             end = start + self.mini_batch_size
             yield xyield, yyield, iter_over_all
 
-    @profile
     def run(self, penal: str = 'l1', lamb: float = 0.01,
-            epochs: int = 201, l_rate: float = 0.01, **kwargs):
-        """Run regression with the given paramters."""
+            epochs: int = 201, l_rate: float = 0.01, logging_freq=100):
+        """
+        Run penalized regression.
+
+        :param penal: penalty either l0,l1, or l2
+        :param lamb: regularization parameter
+        :param epochs: number of epochs
+        :param l_rate: learning rate
+        :param logging_freq: logging frequency
+        :return:
+        """
         results = ResultCollector(lamb, epochs, self.type, penal)
         model = self._model_builder(penal)
         optimizer = torch.optim.Adagrad(model.parameters(), lr=l_rate)
@@ -197,7 +215,7 @@ class pytorch_linear(object):
                                             yy.flatten())[0, 1]
                 results.iter_accu_training.append(training_accu)
                 results.loss.append(loss.item())
-            if _ % 100 == 0:
+            if _ % logging_freq == 0:
                 predict, penalty = model.forward(valid_x, False)
                 accu = self._accuracy(predict)
                 lg.info('Iteration %s: Accuracy: %s Loss: %s',
