@@ -128,3 +128,6 @@ data
 *.idea
 
 *venv*
+
+*tensorboard
+notebooks/tensorboard
