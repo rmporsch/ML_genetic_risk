@@ -8,7 +8,8 @@ lg = logging.getLogger(__name__)
 
 class LinearModel:
 
-    def __init__(self, X, y, bool_blocks: list, learning_rate: float, penal: float):
+    def __init__(self, X, y, bool_blocks: list, keep_prob: float,
+                 learning_rate: float, penal: float):
         self.X = X
         self.y = y
         self.penal = penal
@@ -16,6 +17,9 @@ class LinearModel:
         self.learning_rate = learning_rate
         self.bool_blocks = bool_blocks
         self.num_blocks = len(bool_blocks)
+        self.keep_prob = keep_prob
+        self.training = tf.cond(keep_prob < 1.0, lambda: tf.constant(True),
+                                lambda:tf.constant(False))
         lg.debug('Batch size is: %s', self.batch_size)
         lg.debug('Learning rate is set to %s', self.learning_rate)
         lg.debug('Number of blocks is set to %s', self.num_blocks)
@@ -24,7 +28,7 @@ class LinearModel:
         self.loss
         self.optimize
         self.error
-        self.corr
+        # self.corr
 
     @define_scope(scope='loss')
     def loss(self):
@@ -67,19 +71,25 @@ class LinearModel:
 
     @define_scope(scope='prediction')
     def prediction(self):
-        linear_combiner = tf.constant(1.0, shape=[self.num_blocks, 1])
         rand_norm_init = tf.initializers.random_normal(0, 0.0001)
-        collector = list()
-        for i, b in enumerate(self.bool_blocks):
-            l1 = tf.contrib.layers.l1_regularizer(scale=self.penal, scope=None)
-            with tf.variable_scope('LD_block' + str(i)):
-                small_block = tf.boolean_mask(self.X, b, axis=1)
-                small_block.set_shape((self.batch_size, np.sum(b)))
-                y_ = tf.layers.dense(small_block, 1, kernel_regularizer=l1,
-                                     kernel_initializer=rand_norm_init)
-                collector.append(y_)
-                if i % 10 == 0:
-                    lg.debug('Made tensors for LD block %s', i)
+        rand_norm_init_1 = tf.initializers.random_normal(1.0, 0.0001)
+        l1 = tf.contrib.layers.l1_l2_regularizer(scale_l1=self.penal, scale_l2=self.penal, scope=None)
+        with tf.variable_scope('LD_blocks'):
+            collector = list()
+            for i, b in enumerate(self.bool_blocks):
+                with tf.variable_scope('LD_block' + str(i)):
+                    small_block = tf.boolean_mask(self.X, b, axis=1)
+                    small_block.set_shape((self.batch_size, np.sum(b)))
+                    y_ = tf.layers.dense(small_block, 1, kernel_regularizer=l1,
+                                         kernel_initializer=rand_norm_init)
+                    collector.append(y_)
+                    if i % 10 == 0:
+                        lg.debug('Made tensors for LD block %s', i)
         collection = tf.concat(collector, name='prediction_matrix', axis=1)
-        y_hat = tf.matmul(collection, linear_combiner, name='combinging_linear')
+        norm_collection = tf.layers.batch_normalization(collection, axis=1, center=True,
+                                                        training=self.training)
+        drop_out = tf.nn.dropout(norm_collection, self.keep_prob)
+        y_hat = tf.layers.dense(drop_out, 1, name='combinging_linear',
+                               kernel_initializer=rand_norm_init_1,
+                               kernel_regularizer=l1)
         return y_hat

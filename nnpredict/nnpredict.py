@@ -88,7 +88,7 @@ class NNpredict(object):
                                                               test_size=validation_size)
             if save_path is not None:
                 with open(save_path, 'wb') as f:
-                    pickle.dump((self.testing, self.validation, self.testing), f)
+                    pickle.dump((self.training, self.validation, self.testing), f)
         lg.info('\nTraining: %s \nValidation: %s \nTesting: %s',
                 len(self.training), len(self.validation), len(self.testing))
 
@@ -140,7 +140,8 @@ class NNpredict(object):
                 lg.debug('Dataset %s has the shape %s', na, dat.shape)
         self.x_valid, self.y_valid, self.x_test, self.y_test = datasets
 
-    def linear_model(self, epochs: int = 400, l_rate: float = 0.001, penal: float = 0.005):
+    def linear_model(self, epochs: int = 400, l_rate: float = 0.001,
+                     penal: float = 0.005, name: str = ''):
         """
         Running a linear model.
 
@@ -148,15 +149,17 @@ class NNpredict(object):
         """
         assert self.x_valid is not None
         assert self.y_valid is not None
+        assert len(self.training) > 1
         Xp = tf.placeholder(tf.float32, [None, self.p], name='genotypes')
         yp = tf.placeholder(tf.float32, [None, 1], name='phenotype')
+        keep_prob = tf.placeholder(tf.float32, None, name='dropout_prob')
         now =  datetime.now()
         now = now.strftime('%d/%m/%Y-%H:%M:%S')
         lg.debug('Current time: %s', now)
-        model = LinearModel(Xp, yp, self.bool_blocks, l_rate, penal=penal)
-        train_writer = tf.summary.FileWriter('tensorboard/neural_network/train-'+now,
+        model = LinearModel(Xp, yp, self.bool_blocks, keep_prob, l_rate, penal=penal)
+        train_writer = tf.summary.FileWriter('tensorboard/neural_network/train-'+name+now,
                                              tf.get_default_graph())
-        test_writer = tf.summary.FileWriter('tensorboard/neural_network/test-'+now)
+        test_writer = tf.summary.FileWriter('tensorboard/neural_network/test-'+name+now)
         merged_summary = tf.summary.merge_all()
         init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
         with tf.Session() as sess:
@@ -165,10 +168,12 @@ class NNpredict(object):
                 data_iter = self._geno_iterator(self.training, self.pheno)
                 for x, y in data_iter:
                     _, loss, summary = sess.run([model.optimize, model.loss, merged_summary],
-                                       feed_dict={Xp: x, yp: y})
+                                       feed_dict={Xp: x, yp: y, keep_prob: 0.1})
                 train_writer.add_summary(summary, i)
+
                 if i % 10 == 0:
                     summary, pred = sess.run([merged_summary, model.prediction],
-                                     feed_dict={Xp: self.x_valid, yp: self.y_valid})
+                                     feed_dict={Xp: self.x_valid, yp: self.y_valid,
+                                                keep_prob: 1.0})
                     print(i, np.corrcoef(self.y_valid.flatten(), pred.flatten())[0, 1])
                     test_writer.add_summary(summary, i)
