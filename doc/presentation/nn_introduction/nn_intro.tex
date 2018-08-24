@@ -176,41 +176,41 @@
 \begin{frame}[t]{What's the goal?}
   Adjust our parameters so that $\hat{y}$ is as close as possible to $y$. Hence in a least square case:
   \begin{equation}
-    J(\hat{y}, y) = \frac{1}{2m} \sum^m_{i=1} {(\hat{y}^{(i)} - y^{(i)})}^2
+    L(\hat{y}, y) = \frac{1}{2m} \sum^m_{i=1} {(\hat{y}^{(i)} - y^{(i)})}^2
   \end{equation}
   with the parameters $\theta$ representing all parameters ($W, b$) or in a binary classification case:
   \begin{equation}
-    J(\hat{y}, y) = - \sum^m_{i=1} y^{(i)}\log(\hat{y}^{(i)}) + (1- y^{(i)})\log(1-\hat{y}^{(i)})
+    L(\hat{y}, y) = - \sum^m_{i=1} y^{(i)}\log(\hat{y}^{(i)}) + (1- y^{(i)})\log(1-\hat{y}^{(i)})
   \end{equation}
   Our goal is to minimize this cost function with respect to $\theta$.
   \begin{equation}
-    \arg\min_\theta{J_\theta(\hat{y}, y)}
+    \arg\min_\theta{L_\theta(\hat{y}, y)}
   \end{equation}
 \end{frame}
 
 \begin{frame}[t]{Gradient Descent}
   Gradient descent has been a popular choice to optimize the cost functions for convex/non-convex functions.
 
-  Let's look at the simple function $J(w) = w^2$
+  Let's look at the simple function $L(w) = w^2$
   \begin{figure}[htpb]
     \centering
     \includegraphics[width=0.6\linewidth]{x2_gd.png}
   \end{figure}
   \begin{equation}
-    w := w - \gamma \bigtriangledown_wJ
+    w := w - \gamma \bigtriangledown_wL
   \end{equation}
   in which $\gamma$ is the learning rate.
 \end{frame}
 
 \begin{frame}[t]{Gradient Descent}
-  Hence we would like to minimize our cost function $J$.
+  Hence we would like to minimize our cost function $L$.
   \\
   In the linear regression case:
   \begin{equation}
     \begin{align*}
-      J(w, b, y) &= \frac{1}{2m} \sum^m_{i=1} (wx^{(i)}+b) - y^{(i)})^2 \\
-      \frac{\partial J}{\partial w} &= \frac{1}{m} \sum^m_{i=1} ((wx^{(i)}+b) - y^{(i)})x^{(i)} \\
-      \frac{\partial J}{\partial b} &= \frac{1}{m} \sum^m_{i=1} ((wx^{(i)}+b) - y^{(i)}) \\
+      L(w, b, y) &= \frac{1}{2m} \sum^m_{i=1} (wx^{(i)}+b) - y^{(i)})^2 \\
+      \frac{\partial L}{\partial w} &= \frac{1}{m} \sum^m_{i=1} ((wx^{(i)}+b) - y^{(i)})x^{(i)} \\
+      \frac{\partial L}{\partial b} &= \frac{1}{m} \sum^m_{i=1} ((wx^{(i)}+b) - y^{(i)}) \\
     \end{align}
   \end{equation}
   As you might have noticed, we first need to compute $\hat{y}$ before we can compute the partial derivatives for $w$ and $b$.
@@ -219,17 +219,17 @@
 \begin{frame}[t]{Application in NN}
   The same approach is also used in NN:
   \begin{enumerate}[(i)]
-    \item Computation of $h_\theta(x)$ 
-    \item Updating $\theta$ with the partial derivatives of $J$
+    \item Computation of $\hat{y}$ 
+    \item Updating parameters with the partial derivatives of $L$
   \end{enumerate}
   This is also called \emph{forward} and \emph{backward} propagation.
   But how do we do this with multiple layers?
 \end{frame}
 
 \begin{frame}[t]{Backward propagation}
-  Our goal is to find $\frac{\partial J}{\partial W^{[l]}_{jk}}$ ($j$ indexes the neuron, $k$ the weight) which is
+  Our goal is to find $\frac{\partial L}{\partial W^{[l]}_{jk}}$ ($j$ indexes the neuron, $k$ the weight) which is
   \begin{equation}
-    \frac{\partial J}{\partial w^{[l]}_{jk}} = \frac{\partial J}{\partial a_j}\frac{\partial a_j}{\partial z_j}\frac{\partial z_j}{\partial w^{[l]}_{jk}}
+    \frac{\partial L}{\partial w^{[l]}_{jk}} = \frac{\partial L}{\partial a_j}\frac{\partial a_j}{\partial z_j}\frac{\partial z_j}{\partial w^{[l]}_{jk}}
   \end{equation}
   in which 
   \begin{equation}
@@ -237,7 +237,7 @@
   \end{equation}
   So what is happening here?
   \begin{enumerate}
-    \item We take the partial derivative of $J$ in respect to $a_j$ ($\frac{\partial J}{\partial a_j}$)
+    \item We take the partial derivative of $L$ in respect to $a_j$ ($\frac{\partial L}{\partial a_j}$)
     \item Then we go one level down: The partial derivative of $a_j$ with respect to $z_j$ (the activation function)
     \item The last step is to get the partial derivatives of $z_j$ with respect to $w_{jk}$ 
   \end{enumerate}
@@ -268,6 +268,36 @@
 \end{frame}
 
 \section{A case study}
+
+\begin{frame}[t]{GoogLeNet}
+  \begin{figure}[htpb]
+    \centering
+    \includegraphics[width=0.8\linewidth]{googlenet.png}
+    \caption{GoogLeNet}
+  \end{figure}
+  \begin{itemize}
+    \item Popular network architecture for image classification
+    \item Introduced the idea of inception layers
+    \item Designed to be used on a smart-phone
+    \item $11,193,984$ parameters
+    \item Error in ImageNet2014 (1000 objects): 6.66\% (humans: 5.1\%)
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[t]{Example Classification}
+  \begin{columns}
+    \begin{column}{0.6\textwidth}
+    \includegraphics[width=0.99\linewidth]{ClassifyImageUsingGoogLeNetExample_01.png}
+    \end{column}
+    \begin{column}{0.6\textwidth}
+    \includegraphics[width=0.99\linewidth]{ClassifyImageUsingGoogLeNetExample_prediction.png}
+    \end{column}
+  \end{columns}
+  \begin{itemize}
+    \item Predictions are very fast
+    \item Accuracy is pretty good
+  \end{itemize}
+\end{frame}
 
 \begin{frame}[t]{Dataset: MNIST}
   Handwritten digits:
@@ -366,6 +396,7 @@
     \item require large computational resources / but not THAT much
     \item are prone to overfitting / but also has lot of methods against it
     \item can achieve some amazing results
+    \item care is required designing these networks
   \end{itemize}
 \end{frame}
 
