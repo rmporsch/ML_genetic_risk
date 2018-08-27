@@ -1,0 +1,409 @@
+\documentclass{beamer}
+\usepackage{csquotes}
+\usepackage{tikz}
+\usetikzlibrary{arrows,positioning,shapes.geometric, calc}
+\usepackage{amsmath}
+\usepackage{listings, xcolor}
+\usepackage{lmodern}
+\usepackage{adjustbox}
+\usepackage{booktabs}
+\usepackage{colortbl}
+\usepackage{caption}
+\usepackage{icomma}
+\usepackage{bigstrut}
+\usepackage{geometry}
+\usepackage{subfigure}
+
+
+\DeclareMathOperator*{\argmin}{argmin}
+\captionsetup[figure]{labelformat=empty}
+
+\usetheme{metropolis}           % Use metropolis theme
+\title{An Introduction to Neural Networks}
+\date{\today}
+\author{Robert M. Porsch}
+\institute{Center of Genomic Science}
+\begin{document}
+\maketitle
+
+\begin{frame}[t]{What to expect?}
+  What are the objectives of this presentation:
+  \begin{itemize}
+    \item Give a brief overview about Neural Networks (NN)
+    \item Illustrate gradient descent
+    \item Explain the concepts of forward and backward propagation
+    \item Illustrate activation functions and their use
+    \item Show an example
+    \item A small test at the end
+  \end{itemize}
+  What are \emph{NOT} the objectives of this presentation:
+  \begin{itemize}
+    \item How to implement an NN
+  \end{itemize}
+  Resources:
+  \begin{itemize}
+    \item I used Andrew Ng course as a guideline for this presentation
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[t]{Where are NN in use?}
+  \begin{itemize}
+    \item Computer vision
+      \begin{itemize}
+        \item facial recognition
+        \item picture classifications
+      \end{itemize}
+      \item translation
+      \item sentiment analysis (text and sound)
+      \item cyber security
+      \item network efficiency
+      \item advertising
+      \item maintenance scheduling
+      \item and so on
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[t]{Why are Neural Networks so popular?}
+  \begin{itemize}
+    \item Branding (Neural Networks, Deep Learning, AI)
+    \item Accomplished spectacular results
+    \item Larger amount of data
+    \item More computational resources
+  \end{itemize}
+  \begin{figure}[htpb]
+    \centering
+    \includegraphics[width=0.7\linewidth]{nn_scales.jpeg}
+    \caption{\tiny From Coursera Course `Neural Networks \& Deep Learning' by Andrew Ng}
+  \end{figure}
+\end{frame}
+
+\section{What is an Neural Network}
+
+\begin{frame}[t]{Neural Network}
+  \begin{figure}[htpb]
+    \centering
+    \includegraphics[width=0.8\linewidth]{nn.png}
+  \end{figure}
+  \begin{itemize}
+    \item A collection of artificial `neurons'
+    \item One or more inputs 
+    \item One or more outputs
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[t]{What is an Neural Network?}
+  \small
+  Let's look first on a single neuron (also called percepton)
+  \begin{figure}[htpb]
+    \centering
+    \includegraphics[width=0.5\linewidth]{percepton.png}
+    \caption{A single Neuron}
+  \end{figure}
+  Hence the value of a single neuron is is simply the weighted sum of the input
+  \begin{equation}
+   a = g(b + \sum^m_{i=1} w_j x_j)
+  \end{equation}
+  in which $g(\cdot)$ is an activation function and $b$ is the bias term.
+  Hence a single neuron is just the weighted sum of the previous layer.
+\end{frame}
+
+\begin{frame}[t]{Activation functions $g(\cdot)$}
+  \begin{itemize}
+    \item there are multiple different activation functions to chose from
+    \item one of the most popular one is the \emph{rectifier} (see figure below)
+  \end{itemize}
+  \begin{figure}[htpb]
+    \centering
+    \includegraphics[width=0.8\linewidth]{ReLu.png}
+    \caption{(A) $f(x) = \max(0, x)$, (B) $f(x) = \begin{cases} x & \mbox{if } x > 0 \\ ax & \mbox{otherwise} \end{cases}$}
+  \end{figure}
+  (A) is also called \emph{ReLU}, while (B) is called a leaky ReLU
+\end{frame}
+
+\begin{frame}[t]{Some notation}
+  \begin{alertblock}{Notation for sizes and layers}
+    \begin{itemize}
+      \small
+      \item $n_x$ indicates the number of \emph{features}
+      \item $m$ indicates the number of samples
+      \item $n_y$ number of output classes (I will assume $n_y =1 $)
+      \item $n_h^{[l]}$ number of hidden units of the $l^{th}$ layer ($L$ is the number of layers)
+      \item $x^{(1)}_1$ is the value of the first feature of the first subject
+      \item $W^{[1]}$ indicates the weight matrix of the first layer
+      \item $w^{[l]}_{jk}$ $k^{th}$ weight of the $j^{th}$ neuron in the $l^{th}$ layer
+      \item $b^{[l]}$ is the bias for layer $l$
+    \end{itemize}
+  \end{alertblock}
+  BE CAREFUL: $n$ indicates the number of features NOT samples
+\end{frame}
+
+\begin{frame}[t]{Example of a linear regression}
+  Given a dataset $\mathcal{D}$:
+  \begin{equation}
+    X \in \mathbb{R}^{n_x \times m}  = 
+    \begin{pmatrix}
+      x^{(1)}_1 & \cdots & x^{(1)}_n \\
+      \vdots & \vdots & \vdots \\
+      x^{(m)}_1 & \cdots & x^{(m)}_n \\
+    \end{pmatrix}
+  \end{equation}
+  A simple linear regression, or in other words an NN with $L=1, n_y=1$:
+  \begin{equation}
+    \hat{y} = WX+b
+  \end{equation}
+  in which $W \in \mathbb{R}^{1 \times n}$ and $b \in \mathbb{R}^{1}$.
+\end{frame}
+
+\begin{frame}[t]{A two layer NN}
+  \small
+  Let's look at the following NN with $n_x=3, n_h^{[1]} = 2, L=2$:
+  \begin{figure}[htpb]
+    \centering
+    \includegraphics[width=0.4\linewidth]{neural-net2L.png}
+  \end{figure}
+  \begin{enumerate}[(i)]
+    \item Hidden Layer $A^{[1]} = g(W^{[1]}X + b^{[1]})$
+    \item Output Layer: $\hat{y} = g(W^{[2]}A^{[1]} + b^{[2]})$
+  \end{enumerate}
+  In which $W^{[1]} \in \mathbb{R}^{2\times 3}, W^{[2]} \in \mathbb{R}^{1 \times 2}$ and
+  $b^{[1]} \in \mathbb{R}^{2}, b^{[2]} \in \mathbb{R}^{1}$ \\
+  Total number of parameters: 11
+\end{frame}
+
+\section{Parameter estimation}
+\label{sec:the_basics}
+
+\begin{frame}[t]{What's the goal?}
+  Adjust our parameters so that $\hat{y}$ is as close as possible to $y$. Hence in a least square case:
+  \begin{equation}
+    L(\hat{y}, y) = \frac{1}{2m} \sum^m_{i=1} {(\hat{y}^{(i)} - y^{(i)})}^2
+  \end{equation}
+  with the parameters $\theta$ representing all parameters ($W, b$) or in a binary classification case:
+  \begin{equation}
+    L(\hat{y}, y) = - \sum^m_{i=1} y^{(i)}\log(\hat{y}^{(i)}) + (1- y^{(i)})\log(1-\hat{y}^{(i)})
+  \end{equation}
+  Our goal is to minimize this cost function with respect to $\theta$.
+  \begin{equation}
+    \arg\min_\theta{L_\theta(\hat{y}, y)}
+  \end{equation}
+\end{frame}
+
+\begin{frame}[t]{Gradient Descent}
+  Gradient descent has been a popular choice to optimize the cost functions for convex/non-convex functions.
+
+  Let's look at the simple function $L(w) = w^2$
+  \begin{figure}[htpb]
+    \centering
+    \includegraphics[width=0.6\linewidth]{x2_gd.png}
+  \end{figure}
+  \begin{equation}
+    w := w - \gamma \bigtriangledown_wL
+  \end{equation}
+  in which $\gamma$ is the learning rate.
+\end{frame}
+
+\begin{frame}[t]{Gradient Descent}
+  Hence we would like to minimize our cost function $L$.
+  \\
+  In the linear regression case:
+  \begin{equation}
+    \begin{align*}
+      L(w, b, y) &= \frac{1}{2m} \sum^m_{i=1} (wx^{(i)}+b) - y^{(i)})^2 \\
+      \frac{\partial L}{\partial w} &= \frac{1}{m} \sum^m_{i=1} ((wx^{(i)}+b) - y^{(i)})x^{(i)} \\
+      \frac{\partial L}{\partial b} &= \frac{1}{m} \sum^m_{i=1} ((wx^{(i)}+b) - y^{(i)}) \\
+    \end{align}
+  \end{equation}
+  As you might have noticed, we first need to compute $\hat{y}$ before we can compute the partial derivatives for $w$ and $b$.
+\end{frame}
+
+\begin{frame}[t]{Application in NN}
+  The same approach is also used in NN:
+  \begin{enumerate}[(i)]
+    \item Computation of $\hat{y}$ 
+    \item Updating parameters with the partial derivatives of $L$
+  \end{enumerate}
+  This is also called \emph{forward} and \emph{backward} propagation.
+  But how do we do this with multiple layers?
+\end{frame}
+
+\begin{frame}[t]{Backward propagation}
+  Our goal is to find $\frac{\partial L}{\partial W^{[l]}_{jk}}$ ($j$ indexes the neuron, $k$ the weight) which is
+  \begin{equation}
+    \frac{\partial L}{\partial w^{[l]}_{jk}} = \frac{\partial L}{\partial a_j}\frac{\partial a_j}{\partial z_j}\frac{\partial z_j}{\partial w^{[l]}_{jk}}
+  \end{equation}
+  in which 
+  \begin{equation}
+    a_j = g(z_j) =  g(\sum^k_{k=1} w^{[l]}_{kj}a^{[l-1]}_{k})
+  \end{equation}
+  So what is happening here?
+  \begin{enumerate}
+    \item We take the partial derivative of $L$ in respect to $a_j$ ($\frac{\partial L}{\partial a_j}$)
+    \item Then we go one level down: The partial derivative of $a_j$ with respect to $z_j$ (the activation function)
+    \item The last step is to get the partial derivatives of $z_j$ with respect to $w_{jk}$ 
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}[t]{Backward propagation}
+  \begin{itemize}
+    \item We update each weight and bias as we go backwards through the network
+    \item You do not need to know the derivatives for your own implementations
+    \item Don't worry if you feel this is a bit too much
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[t]{Optimization Algorithms}
+  \begin{itemize}
+    \item There are a lot of different adaptations of gradient descent
+    \item Most adaptations lead to faster learning, not necessary better results
+    \item Potential problems are: Local optimums, saddle points, starting values
+  \end{itemize}
+  Some different Gradient Descent algorithms:
+  \begin{itemize}
+    \item AdaGrad
+    \item RMSprop
+    \item Adam
+    \item AdaDelta
+    \item Etc.
+  \end{itemize}
+\end{frame}
+
+\section{A case study}
+
+\begin{frame}[t]{GoogLeNet}
+  \begin{figure}[htpb]
+    \centering
+    \includegraphics[width=0.8\linewidth]{googlenet.png}
+    \caption{GoogLeNet}
+  \end{figure}
+  \begin{itemize}
+    \item Popular network architecture for image classification
+    \item Introduced the idea of inception layers
+    \item Designed to be used on a smart-phone
+    \item $11,193,984$ parameters
+    \item Error in ImageNet2014 (1000 objects): 6.66\% (humans: 5.1\%)
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[t]{Example Classification}
+  \begin{columns}
+    \begin{column}{0.6\textwidth}
+    \includegraphics[width=0.99\linewidth]{ClassifyImageUsingGoogLeNetExample_01.png}
+    \end{column}
+    \begin{column}{0.6\textwidth}
+    \includegraphics[width=0.99\linewidth]{ClassifyImageUsingGoogLeNetExample_prediction.png}
+    \end{column}
+  \end{columns}
+  \begin{itemize}
+    \item Predictions are very fast
+    \item Accuracy is pretty good
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[t]{Dataset: MNIST}
+  Handwritten digits:
+  \begin{figure}[htpb]
+    \centering
+    \includegraphics[width=0.8\linewidth]{MnistExamples.png}
+  \end{figure}
+\end{frame}
+
+\begin{frame}[t]{What are my goals with this case study?}
+  \begin{itemize}
+    \item Give an impression of the NN design process
+    \item Show what impact different choices have
+    \item Talk about sample size
+    \item Talk about different NN structures
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[t]{The Models}
+    Simple Neural Network:
+      \begin{itemize}
+        \item 5 layers, 160 nodes each layer ($\sim225,000$ parameters)
+        \item activation function: tanh
+        \item 20 epochs
+      \end{itemize}
+      LeeKasso:
+      \begin{itemize}
+        \item compute p-values for each pixel independently
+        \item take the best 10 pixel for prediction
+      \end{itemize}
+  Using 5-fold-cross validation.
+\end{frame}
+
+\begin{frame}[t]{Results}
+  \begin{figure}[htpb]
+    \centering
+    \includegraphics[width=0.8\linewidth]{leekasso.png}
+  \end{figure}
+\end{frame}
+
+\begin{frame}[t]{A better Neural Network}
+  Lets use some more modern neural networks:
+  \begin{itemize}
+    \item Multilayerperceptron with $\sim120,000$ parameters (MLPs)
+    \item Convolutional Neural Network with $\sim200,000$ parameters (CNN)
+  \end{itemize}
+  Lets also change the activation function to a ReLU.
+\end{frame}
+
+\begin{frame}[t]{New Results}
+  \begin{figure}[htpb]
+    \centering
+    \includegraphics[width=0.9\linewidth]{cnn.png}
+  \end{figure}
+\end{frame}
+
+\begin{frame}[t]{So what is going on here?}
+  NN are difficult to train since a number of parameters are problem specific.
+  \begin{itemize}
+    \item NN with tanh are more difficult to train
+    \item 20 epochs are often not enough
+    \item starting values matter
+    \item different frameworks can give you different results
+    \item NN has a number of regularization methods
+  \end{itemize}
+\end{frame}
+
+\section{Designing an Neural Network}
+
+\begin{frame}[t]{A Neural Network Life Cycle}
+ \begin{figure}[htpb]
+   \centering
+   \includegraphics[width=0.8\linewidth]{life_cycle.png}
+ \end{figure} 
+ \begin{itemize}
+   \item iterative process
+   \item Training, Development, Testing data 
+ \end{itemize}
+\end{frame}
+
+\begin{frame}[t]{Helpful software and Community}
+  There are a number of different software suits available:
+  \begin{itemize}
+    \item Tensorflow
+    \item Torch
+    \item Coffee
+    \item and others
+  \end{itemize}
+  A very vibrant community to help you with your development.
+\end{frame}
+
+\begin{frame}[t]{Conclusion}
+  Neural Networks
+  \begin{itemize}
+    \item are very flexible (can in cooperate problem specific constraints)
+    \item require large computational resources / but not THAT much
+    \item are prone to overfitting / but also has lot of methods against it
+    \item can achieve some amazing results
+    \item care is required designing these networks
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[c, plain]{}
+  \begin{center}
+    Lets see if you have learned anything
+  \end{center}
+\end{frame}
+
+\end{document}

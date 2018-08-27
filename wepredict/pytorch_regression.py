@@ -18,7 +18,7 @@ def hard_sigmoid(x):
 
 class ResultCollector(object):
 
-    def __init__(self, lamb: float, epochs: int, type: str, penal_type: str):
+    def __init__(self,n: int, p: int, lamb: float, epochs: int, type: str, penal_type: str):
         self.start_time = datetime.datetime.now()
         self.loss = list()
         self.iter_accu_valid = list()
@@ -28,6 +28,8 @@ class ResultCollector(object):
         self.epoch = epochs
         self.penal = penal_type
         self.type = type
+        self.n = n
+        self.p = p
 
         self.accu = None
         self.coef = None
@@ -46,6 +48,12 @@ class ResultCollector(object):
         self.iter_accu_valid.append(pred_valid)
 
     def add_parameters(self, coefs):
+        """
+        Append parameters to result class.
+
+        :param coefs: paramter class from PyTorch
+        :return: None
+        """
         out = {}
         for name, param in coefs:
             new_name = name.replace('_origin.', '')
@@ -58,9 +66,9 @@ class RegL0(nn.Module):
     Run Regression with L0
     """
 
-    def __init__(self, n_input, n_output, mean: float = 1.0):
+    def __init__(self, n_input, n_output, mean: float = 1.0, **kwargs):
         super(RegL0, self).__init__()
-        self.linear = L0Linear(n_input, n_output, loc_mean=mean)
+        self.linear = L0Linear(n_input, n_output, loc_mean=mean, **kwargs)
 
     def forward(self, x, training = True):
         self.linear.training = training
@@ -112,6 +120,8 @@ class pytorch_linear(object):
             model = RegL1(self.input_dim, self.output_dim)
         elif penal == 'l0':
             model = RegL0(self.input_dim, self.output_dim)
+        elif penal == 'l02':
+            model = RegL0(self.input_dim, self.output_dim, l02=True)
         else:
             raise ValueError('incorrect norm specified')
         return model
@@ -139,6 +149,11 @@ class pytorch_linear(object):
         return accu
 
     def iterator(self):
+        """
+        Iterator over x,y paramters with given batch size.
+
+        :return: None
+        """
         start = 0
         end = self.mini_batch_size
         index = np.arange(self.n)
@@ -170,9 +185,18 @@ class pytorch_linear(object):
             yield xyield, yyield, iter_over_all
 
     def run(self, penal: str = 'l1', lamb: float = 0.01,
-            epochs: int = 201, l_rate: float = 0.01, **kwargs):
-        """Run regression with the given paramters."""
-        results = ResultCollector(lamb, epochs, self.type, penal)
+            epochs: int = 201, l_rate: float = 0.01, logging_freq=100):
+        """
+        Run penalized regression.
+
+        :param penal: penalty either l0,l1, or l2
+        :param lamb: regularization parameter
+        :param epochs: number of epochs
+        :param l_rate: learning rate
+        :param logging_freq: logging frequency
+        :return:
+        """
+        results = ResultCollector(self.n, self.input_dim, lamb, epochs, self.type, penal)
         model = self._model_builder(penal)
         optimizer = torch.optim.Adagrad(model.parameters(), lr=l_rate)
         valid_x = Variable(torch.from_numpy(self.X_valid)).float()
@@ -194,7 +218,7 @@ class pytorch_linear(object):
                                             yy.flatten())[0, 1]
                 results.iter_accu_training.append(training_accu)
                 results.loss.append(loss.item())
-            if _ % 100 == 0:
+            if _ % logging_freq == 0:
                 predict, penalty = model.forward(valid_x, False)
                 accu = self._accuracy(predict)
                 lg.info('Iteration %s: Accuracy: %s Loss: %s',

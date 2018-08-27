@@ -8,9 +8,9 @@ from wepredict.helpers import *
 
 
 if __name__ == '__main__':
-    plink_file = '/home/rmporsch/projects/ML_genetic_risk/data/sim_1000G_chr10'
-    pheno_file = '/home/rmporsch/projects/ML_genetic_risk/data/sim_1000G_chr10.txt'
-    ld_block_file = '/home/rmporsch/projects/ML_genetic_risk/data/Berisa.EUR.hg19.bed'
+    plink_file = 'data/sim_1000G_chr10'
+    pheno_file = 'data/sim_1000G_chr10.txt'
+    ld_block_file = 'data/Berisa.EUR.hg19.bed'
     data = Genetic_data_read(plink_file, ld_block_file, pheno_file)
     train_index, valid_index, test_index = generate_valid_test_data(data.n,
                                                                     0.1, 0.1)
@@ -24,6 +24,7 @@ if __name__ == '__main__':
     print(cluster.job_script())
     cluster.scale(1)
     client = Client(cluster)
+    cluster.scale(5)
     print(client)
     out = list()
     for ld_block in data.groups[10]:

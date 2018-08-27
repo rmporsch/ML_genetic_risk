@@ -1,13 +1,15 @@
 import numpy as np
 from sklearn.linear_model import lasso_path
 import matplotlib.pyplot as plt
-import logging as lg
+import logging
 from sklearn.preprocessing import scale
 from sklearn.model_selection import train_test_split
 from wepredict.pytorch_regression import pytorch_linear
 
-# lg.basicConfig(level=lg.DEBUG)
-
+logging.basicConfig(level=logging.INFO,
+                    filename='testing_pytorch_diff_norms.log')
+lg = logging.getLogger(__name__)
+lg.setLevel(logging.INFO)
 
 def sim(n, p, null_prop):
     lg.info('n: %s, p: %s', n, p)
@@ -15,7 +17,7 @@ def sim(n, p, null_prop):
     for i in range(p):
         pred.append(np.random.normal(0, 1, n))
     pred = np.column_stack(pred)
-    beta = np.random.normal(0, 0.1, p)
+    beta = np.random.normal(0, 0.1**2, p)
     null_index = np.random.choice(range(p),int(p*null_prop),
                      replace=False)
     beta[null_index] = 0
@@ -38,43 +40,54 @@ def torch_model(x_train, y_train, x_valid, y_valid, alphas, regu):
     torch_model = pytorch_linear(x_train, y_train, x_valid, y_valid,
                                  type='c', mini_batch_size=50)
     outcome = list()
+    if len(alphas) == 1:
+        lg.warning('Only one alpha value used')
     for a in alphas:
-        outcome.append(torch_model.run(regu, float(a), epochs=200))
+        outcome.append(torch_model.run(regu, float(a), epochs=400,
+                                       logging_freq=25))
 
     predictions = list()
     for i in outcome:
         predictions.append(i.accu)
     best_lamb = np.argmax(predictions)
     lg.debug('best lambda: %s', best_lamb)
-    return outcome[best_lamb]
+    return outcome[best_lamb], outcome
 
 
 if __name__ == '__main__':
-    n = 1000
-    p = 1000
+    n = 10000
+    p = 10000
     null_prop = 0.99
     y, pred = sim(n, p, null_prop)
-    # alpha_values = np.arange(0.001, 0.01, 0.001)
-    alpha_values = [0.5]
+    alpha_values = np.arange(0.001, 0.01, 0.001)
     lg.info('Number of alphas: %s', alpha_values)
     x_train, x_test, y_train, y_test = train_test_split(pred, y,
                                                         test_size=0.1,
                                                         random_state=42)
     del pred
-    # skoutput = sklearn_model(x_train, y_train, x_test, y_test, alpha_values)
-    # print('sklearn best:', skoutput)
 
-    regus = ['l0', 'l1']
+    regus = ['l1', 'l0', 'l02']
     sample_limit = np.logspace(2, 4, 10, dtype=int)
-    sample_limit = [1001]
+    assert sample_limit[-1] == n
     out = dict()
-    out['l1'] = list()
-    out['l0'] = list()
+    for l in regus:
+        out[l] = list()
+    everything = dict()
+    for l in regus:
+        everything[l] = list()
     for s in sample_limit:
         for l in regus:
-            alpha_values = [0.01] if l == 'l0' else [0.01]
-            torch_out = torch_model(x_train[0:int(s), :], y_train[0:int(s)],
+            torch_out, all_models = torch_model(x_train[0:int(s), :], y_train[0:int(s)],
                                     x_test, y_test, alpha_values, regu=l)
             out[l].append(torch_out)
-            print('Best Torch model', l, ':', torch_out.accu, 'with', s)
+            everything[l].append(all_models)
+            lg.info('Best Torch model %s: %s with %s', l, torch_out.accu, s)
 
+    import pickle
+    with open('l1_l0_l02_by_samplesize.pickle', 'wb') as f:
+        pickle.dump(out, f)
+    with open('l1_l0_l02_by_samplesize_everything.pickle', 'wb') as f:
+        pickle.dump(everything, f)
+
+    from notify.notify import notify
+    notify('Pytorch model is done!')
