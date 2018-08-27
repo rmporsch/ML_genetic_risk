@@ -91,6 +91,9 @@ class NNpredict(object):
                     pickle.dump((self.training, self.validation, self.testing), f)
         lg.info('\nTraining: %s \nValidation: %s \nTesting: %s',
                 len(self.training), len(self.validation), len(self.testing))
+        self.n_training = len(self.training)
+        self.n_validation = len(self.validation)
+        self.n_testing = len(self.testing)
 
     def _combine_files(self, files):
         geno_iter = self._geno_iterator(files, self.pheno)
@@ -162,14 +165,18 @@ class NNpredict(object):
         test_writer = tf.summary.FileWriter('tensorboard/neural_network/test-'+name+now)
         merged_summary = tf.summary.merge_all()
         init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
+        running_vars = tf.get_collection(tf.GraphKeys.LOCAL_VARIABLES, scope="error/mean_corr")
+        running_vars_initializer = tf.variables_initializer(var_list=running_vars)
+        print(running_vars)
         with tf.Session() as sess:
             sess.run(init)
             for i in range(epochs):
                 data_iter = self._geno_iterator(self.training, self.pheno)
                 for x, y in data_iter:
-                    _, loss, summary = sess.run([model.optimize, model.loss, merged_summary],
+                    _, loss, summary = sess.run([model.optimize, model.cost, merged_summary],
                                        feed_dict={Xp: x, yp: y, keep_prob: 0.1})
                 train_writer.add_summary(summary, i)
+                sess.run(running_vars_initializer)
 
                 if i % 10 == 0:
                     summary, pred = sess.run([merged_summary, model.prediction],

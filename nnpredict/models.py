@@ -20,30 +20,31 @@ class LinearModel:
         self.keep_prob = keep_prob
         self.training = tf.cond(keep_prob < 1.0, lambda: tf.constant(True),
                                 lambda:tf.constant(False))
+        self.streaming_mean_corr = None
         lg.debug('Batch size is: %s', self.batch_size)
         lg.debug('Learning rate is set to %s', self.learning_rate)
         lg.debug('Number of blocks is set to %s', self.num_blocks)
 
         self.prediction
-        self.loss
+        self.cost
         self.optimize
         self.error
-        # self.corr
 
-    @define_scope(scope='loss')
-    def loss(self):
+
+    @define_scope(scope='cost')
+    def cost(self):
         mse = tf.losses.mean_squared_error(self.y, self.prediction)
         tf.summary.scalar('MSE', mse)
         penalty = tf.losses.get_regularization_loss()
         tf.summary.scalar('Penalty', penalty)
-        loss = mse + penalty
-        tf.summary.scalar('Loss', loss)
-        return loss
+        cost = tf.add(mse, penalty)
+        tf.summary.scalar('Cost', cost)
+        return cost
 
     @define_scope(scope='optimization')
     def optimize(self):
         optimizer = tf.train.AdagradOptimizer(self.learning_rate)
-        return optimizer.minimize(self.loss)
+        return optimizer.minimize(self.cost)
 
     @define_scope(scope='error')
     def error(self):
@@ -55,25 +56,17 @@ class LinearModel:
         dd = tf.div(df, batch_size)
         sds = tf.sqrt(dd)
         cov = tf.reduce_mean(tf.reduce_prod(tf.subtract(x, means), axis=1))
-        corr = cov / tf.reduce_prod(sds)
-        tf.summary.scalar('Error', corr)
-        return corr
-
-    # the / makes it re-enter the scope
-    @define_scope(scope='error/')
-    def corr(self):
-        accuracy = tf.contrib.metrics.streaming_pearson_correlation(self.prediction,
-                                                                    self.y,
-                                                                    name='correlation')
-        tf.summary.scalar('Correlation', accuracy[1])
-        tf.summary.scalar('Other_Corr', accuracy[0])
-        return accuracy
+        corr = tf.div(cov, tf.reduce_prod(sds))
+        m, update_m = tf.metrics.mean(corr, name='mean_corr')
+        tf.summary.scalar('Correlation', update_m)
+        return update_m
 
     @define_scope(scope='prediction')
     def prediction(self):
-        rand_norm_init = tf.initializers.random_normal(0, 0.0001)
-        rand_norm_init_1 = tf.initializers.random_normal(1.0, 0.0001)
-        l1 = tf.contrib.layers.l1_l2_regularizer(scale_l1=self.penal, scale_l2=self.penal, scope=None)
+        rand_norm_init = tf.initializers.random_normal(0.0, 0.0001)
+        rand_norm_init_1 = tf.initializers.random_normal(0.0, 0.0001)
+        l1 = tf.contrib.layers.l1_l2_regularizer(scale_l1=self.penal,
+                                                 scale_l2=self.penal, scope=None)
         with tf.variable_scope('LD_blocks'):
             collector = list()
             for i, b in enumerate(self.bool_blocks):
