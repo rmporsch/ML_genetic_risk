@@ -7,7 +7,7 @@ from wepredict.helpers import *
 
 
 if __name__ == '__main__':
-    plink_file = 'data/chr10'
+    plink_file = 'data/sim_1000G_chr10'
     pheno_file = 'data/sim_1000G_chr10.txt'
     ld_block_file = 'data/Berisa.EUR.hg19.bed'
     data = Genetic_data_read(plink_file, ld_block_file, pheno_file)
@@ -15,8 +15,8 @@ if __name__ == '__main__':
                                                                     0.1, 0.1)
 
     cluster = LocalCluster()
-    w = cluster.start_worker(ncors=2)
     client = Client(cluster)
+    cluster.scale(5)
     print(client)
     out = list()
     for ld_block in data.groups[10]:
@@ -32,5 +32,4 @@ if __name__ == '__main__':
         out.append(results)
 
     res = dask.compute(out)
-    cluster.close()
     print('done')
