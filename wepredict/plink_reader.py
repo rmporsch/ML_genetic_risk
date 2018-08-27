@@ -68,6 +68,7 @@ class Genetic_data_read(object):
             self.pheno = self.fam
             self.sub_in = np.ones(self.n, bool)
             self.subject_ids = self.fam['iid'].values
+        lg.debug('closing plink file')
         self.plink_reader.close()
 
     def _process_pheno(self, pheno_file):
@@ -99,8 +100,11 @@ class Genetic_data_read(object):
                 pheno_columns)
         self.pheno_names = pheno_columns
         self.subject_ids = new_fam['iid'].values
-        self.sub_in = [k in self.subject_ids for k in self.fam['iid']]
+        lg.debug('checking sample overlap between fam and phen file')
+        # self.sub_in = [k in self.subject_ids for k in self.fam['iid']]
+        self.sub_in = [True for k in self.fam['iid']]
         self.n = sum(self.sub_in)
+        lg.debug('got %s samples', self.n)
         return new_fam
 
 
@@ -129,14 +133,15 @@ class Genetic_data_read(object):
             yield group[i:i + chunk_size]
 
     def rewrite(self, chunk_size: int, folder: str):
+        lg.debug('rewriting to numpy now')
         assert self.groups is not None
         assert os.path.isdir(folder)
 
         grouped_samples = list(self._chunks(self.subject_ids, chunk_size))
-        rsid = [[k for k in chr] for key, chr in self.groups.items()]
-        rsid = list(chain.from_iterable(rsid))
-        rsid = np.concatenate(rsid).ravel().tolist()
-        lg.debug("RSID: %s", rsid)
+        # rsid = [[k for k in chr] for key, chr in self.groups.items()]
+        # rsid = list(chain.from_iterable(rsid))
+        # rsid = np.concatenate(rsid).ravel().tolist()
+        # lg.debug("RSID: %s", rsid)
         p = self.p
         lg.debug('using %s SNPs', p)
         output_files = list()
@@ -149,8 +154,7 @@ class Genetic_data_read(object):
             reader = PyPlink(self.plink_file)
             pos_index = 0
             sub_in = [k in s for k in self.fam['iid']]
-            lg.debug(sub_in)
-            lg.debug('')
+            # lg.debug(sub_in)
             out_path = os.path.join(folder, 'sample_major_'+str(file_id)+'.npy')
             output_files.append(out_path)
             for snp, genotype in reader.iter_geno():
