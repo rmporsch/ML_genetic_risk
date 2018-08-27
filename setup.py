@@ -5,6 +5,6 @@ setup(name='wepredict',
       description='LD-Block prediction',
       author='Robert Porsch',
       author_email='rmporsch@gmail.com',
-      packages=['wepredict'],
+      packages=['wepredict', 'nnpredict'],
       test_suit='tests'
      )
