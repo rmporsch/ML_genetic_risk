@@ -3,7 +3,10 @@ import torch.nn as nn
 from torch.nn import functional as F
 import torch
 from torch.autograd import Variable
+import logging
 import numpy as np
+
+lg = logging.getLogger(__name__)
 
 def hard_sigmoid(x):
     """Hard Sigmoid function."""
@@ -15,7 +18,8 @@ class _L0Norm(nn.Module):
     def __init__(self, origin, loc_mean: float = 0.0,
                  loc_sdev: float = 0.01,
                  beta: float = 2/3, gamma: float = -0.1,
-                 zeta: float = 1.1, fix_temp: bool = True):
+                 zeta: float = 1.1, fix_temp: bool = True,
+                 l02: bool = False, l02_alpha=0.01):
         """Class of layers using L0 Norm.
 
         :param origin: original layer such as nn.Linear(..), nn.Conv2d(..)
@@ -37,6 +41,11 @@ class _L0Norm(nn.Module):
         self.gamma = gamma
         self.zeta = zeta
         self.gamma_zeta_ratio = np.log(-gamma / zeta)
+        self.l02_alpha = l02_alpha
+        self.l02 = l02
+        if self.l02:
+            assert self.l02_alpha > 0
+            lg.info('Using L_0,2 norm')
 
     def _get_mask(self):
         if self.training:
@@ -44,8 +53,10 @@ class _L0Norm(nn.Module):
             u = Variable(self.uniform)
             s = F.sigmoid((torch.log(u)-torch.log(1-u)+self.loc)/self.temp)
             s = s * (self.zeta - self.gamma) + self.gamma
-            penalty = F.sigmoid((self.loc-self.temp*self.gamma_zeta_ratio)*(self._origin.weight**2)).sum()
-            # penalty = F.sigmoid(self.loc-self.temp*self.gamma_zeta_ratio).sum()
+            penalty = F.sigmoid(self.loc-self.temp*self.gamma_zeta_ratio).sum()
+            if self.l02:
+                l02Norm = (F.sigmoid(self.loc-self.temp*self.gamma_zeta_ratio)*(self._origin.weight**2)).sum()
+                penalty = penalty + self.l02_alpha*l02Norm
         else:
             s = F.sigmoid(self.loc) * (self.zeta - self.gamma) + self.gamma
             penalty = 0

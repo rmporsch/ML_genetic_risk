@@ -7,6 +7,8 @@ from typing import Any
 import numpy as np
 from scipy import sparse
 import logging
+from itertools import chain
+import pickle
 
 lg = logging.getLogger(__name__)
 
@@ -35,6 +37,7 @@ class Genetic_data_read(object):
         self.plink_reader = PyPlink(plink_file)
         self.bim = self.plink_reader.get_bim()
         self.n = self.plink_reader.get_nb_samples()
+        self.p = self.plink_reader.get_nb_markers()
         self.fam = self.plink_reader.get_fam()
         self.bim.columns = [k.strip() for k in self.bim.columns]
         self.chromosoms = self.bim.chrom.unique()
@@ -95,7 +98,7 @@ class Genetic_data_read(object):
                 pheno_columns)
         self.pheno_names = pheno_columns
         self.subject_ids = new_fam['iid'].values
-        self.sub_in = [k in new_fam['iid'].values for k in self.fam['iid']]
+        self.sub_in = [k in self.subject_ids for k in self.fam['iid']]
         self.n = sum(self.sub_in)
         return new_fam
 
@@ -118,3 +121,49 @@ class Genetic_data_read(object):
                          ].index.values
                     out[chr].append(rsids)
             return out
+
+    def _chunks(self, group, chunk_size):
+        """Yield successive n-sized chunks from l."""
+        for i in range(0, len(group), chunk_size):
+            yield group[i:i + chunk_size]
+
+    def rewrite(self, chunk_size: int, folder: str):
+        assert self.groups is not None
+        assert os.path.isdir(folder)
+
+        grouped_samples = list(self._chunks(self.subject_ids, chunk_size))
+        rsid = [[k for k in chr] for key, chr in self.groups.items()]
+        rsid = list(chain.from_iterable(rsid))
+        rsid = np.concatenate(rsid).ravel().tolist()
+        lg.debug("RSID: %s", rsid)
+        p = self.p
+        lg.debug('using %s SNPs', p)
+        output_files = list()
+
+
+        for file_id, s in enumerate(grouped_samples):
+            n = len(s)
+            lg.info('Getting sample block %s with %s samples', file_id, n)
+            genotypematrix = np.zeros((n, p), dtype=np.int8)
+            reader = PyPlink(self.plink_file)
+            pos_index = 0
+            sub_in = [k in s for k in self.fam['iid']]
+            lg.debug(sub_in)
+            lg.debug('')
+            out_path = os.path.join(folder, 'sample_major_'+str(file_id)+'.npy')
+            output_files.append(out_path)
+            for snp, genotype in reader.iter_geno():
+                genotypematrix[:, pos_index] = genotype[sub_in]
+                pos_index += 1
+                if pos_index % 10000 == 0:
+                    lg.debug('Currently at: %s', pos_index)
+            reader.close()
+            np.save(out_path, (genotypematrix, sub_in))
+            lg.debug('Wrote sample block to disk at %s', out_path)
+
+        group_info = 'grouped_samples.pickle'
+        with open(group_info, 'wb') as f:
+            pickle.dump(grouped_samples, f)
+        lg.info('Grouped sample stroed in %s', group_info)
+        return output_files, grouped_samples
+

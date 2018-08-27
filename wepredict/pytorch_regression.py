@@ -19,7 +19,7 @@ def hard_sigmoid(x):
 
 class ResultCollector(object):
 
-    def __init__(self, lamb: float, epochs: int, type: str, penal_type: str):
+    def __init__(self,n: int, p: int, lamb: float, epochs: int, type: str, penal_type: str):
         self.start_time = datetime.datetime.now()
         self.loss = list()
         self.iter_accu_valid = list()
@@ -29,6 +29,8 @@ class ResultCollector(object):
         self.epoch = epochs
         self.penal = penal_type
         self.type = type
+        self.n = n
+        self.p = p
 
         self.accu = None
         self.coef = None
@@ -65,9 +67,9 @@ class RegL0(nn.Module):
     Run Regression with L0
     """
 
-    def __init__(self, n_input, n_output, mean: float = 1.0):
+    def __init__(self, n_input, n_output, mean: float = 1.0, **kwargs):
         super(RegL0, self).__init__()
-        self.linear = L0Linear(n_input, n_output, loc_mean=mean)
+        self.linear = L0Linear(n_input, n_output, loc_mean=mean, **kwargs)
 
     def forward(self, x, training = True):
         self.linear.training = training
@@ -119,6 +121,8 @@ class pytorch_linear(object):
             model = RegL1(self.input_dim, self.output_dim)
         elif penal == 'l0':
             model = RegL0(self.input_dim, self.output_dim)
+        elif penal == 'l02':
+            model = RegL0(self.input_dim, self.output_dim, l02=True)
         else:
             raise ValueError('incorrect norm specified')
         return model
@@ -193,7 +197,7 @@ class pytorch_linear(object):
         :param logging_freq: logging frequency
         :return:
         """
-        results = ResultCollector(lamb, epochs, self.type, penal)
+        results = ResultCollector(self.n, self.input_dim, lamb, epochs, self.type, penal)
         model = self._model_builder(penal)
         optimizer = torch.optim.Adagrad(model.parameters(), lr=l_rate)
         valid_x = Variable(torch.from_numpy(self.X_valid)).float()
