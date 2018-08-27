@@ -1,4 +1,5 @@
 from dask.distributed import Client, LocalCluster
+from dask_jobqueue import PBSCluster
 from dask import delayed
 import dask
 from wepredict.pytorch_regression import pytorch_linear
@@ -7,15 +8,21 @@ from wepredict.helpers import *
 
 
 if __name__ == '__main__':
-    plink_file = 'data/chr10'
-    pheno_file = 'data/sim_1000G_chr10.txt'
-    ld_block_file = 'data/Berisa.EUR.hg19.bed'
+    plink_file = '/home/rmporsch/projects/ML_genetic_risk/data/sim_1000G_chr10'
+    pheno_file = '/home/rmporsch/projects/ML_genetic_risk/data/sim_1000G_chr10.txt'
+    ld_block_file = '/home/rmporsch/projects/ML_genetic_risk/data/Berisa.EUR.hg19.bed'
     data = Genetic_data_read(plink_file, ld_block_file, pheno_file)
     train_index, valid_index, test_index = generate_valid_test_data(data.n,
                                                                     0.1, 0.1)
 
-    cluster = LocalCluster()
-    w = cluster.start_worker(ncors=2)
+    cluster = PBSCluster(processes=1,
+            cores=1, memory="40GB",
+            queue='medium',
+            local_directory='$TMPDIR',
+            resource_spec='select=1:ncpus=12:mem=50gb',
+            walltime='12:00:00')
+    print(cluster.job_script())
+    cluster.scale(1)
     client = Client(cluster)
     print(client)
     out = list()
@@ -32,5 +39,8 @@ if __name__ == '__main__':
         out.append(results)
 
     res = dask.compute(out)
-    cluster.close()
+
+    import pickle
+    with open('simple_testing.pickle', 'wb') as f:
+        pickle.dump(res, f)
     print('done')
