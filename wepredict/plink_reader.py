@@ -102,7 +102,6 @@ class Genetic_data_read(object):
         self.n = sum(self.sub_in)
         return new_fam
 
-
     def _preprocessing_ldblock(self) -> dict:
         if self.groups is None:
             return None
@@ -139,7 +138,6 @@ class Genetic_data_read(object):
         p = self.p
         lg.debug('using %s SNPs', p)
         output_files = list()
-
 
         for file_id, s in enumerate(grouped_samples):
             n = len(s)

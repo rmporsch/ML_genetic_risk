@@ -1,0 +1,91 @@
+\documentclass{beamer}
+\usepackage{csquotes}
+\usepackage{tikz}
+\usetikzlibrary{arrows,positioning,shapes.geometric, calc}
+\usepackage{amsmath}
+\usepackage{listings, xcolor}
+\usepackage{lmodern}
+\usepackage{adjustbox}
+\usepackage{booktabs}
+\usepackage{colortbl}
+\usepackage{caption}
+\usepackage{icomma}
+\usepackage{bigstrut}
+\usepackage{geometry}
+\usepackage{subfigure}
+
+
+\DeclareMathOperator*{\argmin}{argmin}
+\captionsetup[figure]{labelformat=empty}
+
+\usetheme{metropolis}           % Use metropolis theme
+\title{Neural Networks in Genetic Risk Prediction}
+\date{\today}
+\author{Robert M. Porsch}
+\institute{Center of Genomic Science}
+\begin{document}
+\maketitle
+
+\begin{frame}[t]{Introduction}
+  Aim:
+  \begin{itemize}
+    \item Improve genetic risk prediction using Neural Networks
+    \item Estimate non-linear effects
+  \end{itemize}
+  Methods:
+  \begin{itemize}
+    \item LD-connected NN with hidden layer
+    \item Convolutional NN with hidden layer
+  \end{itemize}
+\end{frame}
+
+\section{Data preperation}
+
+\begin{frame}[t]{Format of a bed file}
+  Most commonly bed files are variant-major files
+  \begin{itemize}
+    \item Example: 00010000 are the genotypes of the SNP1 for 4 subjects
+    \item Efficient if you want to single SNP associations
+    \item Extremly inefficient if you want to do multiple regression
+  \end{itemize}
+  Solution:
+  \begin{itemize}
+    \item recode data from variant-major to sample-major
+    \item Example: 00010000 would the the genotypes of 4 SNPs for 1 subjects
+  \end{itemize}
+  This allows efficient memory usage of stochastic gradient descent
+\end{frame}
+
+\begin{frame}[t]{Training, Development, Testing}
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      Simulation Data 1:\\
+      \begin{itemize}
+        \item $2,000$ samples
+        \item 40 different simulated phenotypes
+        \item based on the 1000 Genom project
+        \item $MAF\geq1\%$
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+     Simuation Data 2: 
+     \begin{itemize}
+       \item $300,000$ samples
+       \item 4 different simulated phenotypes
+       \item based on the UKB
+        \item $MAF\geq1\%$
+     \end{itemize}
+    \end{column}
+  \end{columns}
+  Issues: sample size limitations for development/testing dataset
+\\
+  Solution: Cross-Validation
+\end{frame}
+
+\section{LD-connected NN}
+
+\begin{frame}[t]{Architecture}
+  
+\end{frame}
+
+\end{document}
