@@ -2,17 +2,27 @@
 from pyplink import PyPlink
 import pandas as pd
 import os
-import pickle
-from typing import Any
 import numpy as np
-from scipy import sparse
 import logging
 from itertools import chain
 import pickle
+import subprocess
+from bitarray import bitarray
+from typing import List
+
+BoolVector = List[bool]
 
 lg = logging.getLogger(__name__)
 
-def get_genotypes(chr, rsid, plink_path, sub_in):
+def get_genotypes(rsid, plink_path, sub_in):
+    """
+    Retrive genotype matrix from variant major format
+
+    :param rsid: list of rsids
+    :param plink_path: plink-stem path
+    :param sub_in: list of subjects to inlucde
+    :return: genotypematrix
+    """
     reader = PyPlink(plink_path)
     n = reader.get_nb_samples()
     genotypematrix = np.zeros((n, len(rsid)), dtype=np.int8)
@@ -26,142 +36,216 @@ def get_genotypes(chr, rsid, plink_path, sub_in):
     reader.close()
     return genotypematrix
 
+def transform_sample_major(plink_stem: str, output: str) -> str:
+    """
+    Transform plink variant major to sample major.
 
-class Genetic_data_read(object):
-    """Provides batch reading of plink Files."""
+    :param plink_stem: path to plink-stem
+    :param output:  output path
+    :return:  output path
+    """
+    plink2_binary =  os.path.join(os.path.dirname(__file__), 'bin/plink2')
+    lg.debug('location of plink2 file: %s', plink2_binary)
+    command = [plink2_binary, '--bfile', plink_stem,
+               '--export', 'ind-major-bed', '--out', output]
+    lg.debug('Used command:\n%s', command)
+    subprocess.run(command)
+    return output
 
-    def __init__(self, plink_file: str, batches, pheno: str = None):
-        """Provide batch reading of plink Files."""
-        super(Genetic_data_read, self).__init__()
+class Major_reader(object):
+
+    def __init__(self, plink_file: str, pheno: str = None,
+                 ldblock_file: str = None):
+        """
+        Reading plink files in sample major format.
+
+        :param plink_file: plink file stem
+        :param pheno: path to pheno file
+        """
+        super(Major_reader, self).__init__()
         self.plink_file = plink_file
-        self.plink_reader = PyPlink(plink_file)
-        self.bim = self.plink_reader.get_bim()
-        self.n = self.plink_reader.get_nb_samples()
-        self.p = self.plink_reader.get_nb_markers()
-        self.fam = self.plink_reader.get_fam()
-        self.bim.columns = [k.strip() for k in self.bim.columns]
-        self.chromosoms = self.bim.chrom.unique()
         self.pheno_file = pheno
-        lg.debug('Chromosom is in the following format %s', self.chromosoms[0])
-        if batches is not None:
-            self._dirname = os.path.dirname(plink_file)
-            self._pickel_path = plink_file+'.ld_blocks.pickel'
-            if os.path.isfile(self._pickel_path):
-                with open(self._pickel_path, 'rb') as f:
-                    self.groups = pickle.load(f)
-            else:
-                self.groups = pd.read_csv(batches, sep='\t')
-                self.groups.columns = [k.strip() for k in self.groups.columns]
-                self.groups['chr'] = self.groups['chr'].str.strip('chr')
-                self.groups['chr'] = self.groups['chr'].astype(int)
-                self.groups = self._preprocessing_ldblock()
-                pickle.dump(self.groups, open(self._pickel_path, 'wb'))
+        self.pheno = self._read_pheno(pheno)
+        self.bim = pd.read_table(plink_file+'.bim', header=None,
+                                 names=['chr', 'rsid', 'c', 'pos',
+                                        'a1', 'a2'])
+        self.p = self.bim.shape[0]
+        self.chr = self.bim.chr.unique()
+        lg.debug('Using %s number of SNPs', self.p)
+        assert os.path.isfile(self.pheno_file)
+        assert os.path.isfile(self.plink_file+'.bed')
+        self._is_sample_major = self._check_magic_number(self.plink_file)
+        self._size = -(-self.p // 4)
+        self._overflow = self._size*4 - self.p
+        self._to_remove = [self.p + k for k in range(self._overflow)]
+        if ldblock_file is not None:
+            self.ldblocks = self._check_ldblocks(ldblock_file)
         else:
-            self.groups = None
-        lg.debug('Group is a %s with the following keys %s',
-                 type(self.groups), self.groups.keys())
+            self.ldblocks = None
+
+    def _check_ldblocks(self, ldblocks_path: str):
+        dirname = os.path.dirname(self.plink_file)
+        pickel_path = self.plink_file+'.ld_blocks.pickel'
+        if os.path.isfile(pickel_path):
+            with open(pickel_path, 'rb') as f:
+                blocks = pickle.load(f)
+        else:
+            blocks = pd.read_csv(ldblocks_path, sep='\t')
+            blocks.columns = [k.strip() for k in blocks.columns]
+            blocks['chr'] = blocks['chr'].str.strip('chr')
+            blocks['chr'] = blocks['chr'].astype(int)
+            blocks = self._preprocessing_ldblock(blocks)
+            pickle.dump(blocks, open(pickel_path, 'wb'))
+        return blocks
+
+    def _preprocessing_ldblock(self, blocks) -> dict:
+        out = {}
+        for chr in self.chr:
+            subset_blocks = blocks[blocks.chr == chr]
+            subset_bim = self.bim[self.bim.chrom == chr]
+            out[chr] = []
+            for index, row in subset_blocks.iterrows():
+                start = row['start']
+                end = row['stop']
+                rsids = subset_bim[
+                    (self.bim.pos >= start)
+                    & (self.bim.pos <= end)
+                    ].index.values
+                out[chr].append(rsids)
+        return out
+
+    def _read_pheno(self, pheno: str = None):
+        columns = ['FID', 'IID', 'PAT', 'MAT', 'SEX', 'PHENO']
+        fam = pd.read_table(self.plink_file+'.fam', header=None)
+        self.n = fam.shape[0]
+        if fam.shape[1] > 5:
+            fam.columns = columns
+        elif fam.shape[1] == 5:
+            fam.columns = columns[:-1]
+        else:
+            raise ValueError('The fam file seems wrongly formated')
+
         if pheno is not None:
-            self.pheno = self._process_pheno(pheno)
+            pheno = pd.read_table(pheno)
+            n_import = pheno.shape[0]
+            header = pheno.columns
+            if np.all([k not in ['FID', 'IID'] for k in header]):
+                raise ValueError('FID and IID needs to be in pheno file')
+            if np.all([k in header for k in ['PAT', 'MAT', 'SEX']]):
+                pheno.drop(['PAT', 'MAT', 'SEX'], axis=1, inplace=True)
+
+            mpheno = pd.merge(fam, pheno, 'left', on=['IID', 'FID'])
+            merged_n, merged_p = mpheno.shape
+            lg.debug('Format of the new fam file %s', mpheno.shape)
+            if merged_n < n_import:
+                lg.warning('Out of %s subjects, %s were in fam file',
+                           n_import, merged_n)
+                if merged_n == 0:
+                    raise ValueError('No subject present in file')
+            pheno_columns = [k for k in mpheno.columns if k not in fam.columns]
+            lg.info('Extracted and integrated the following phenotypes %s',
+                    pheno_columns)
+            self.pheno_names = pheno_columns
+            self.subject_ids = mpheno['iid'].values
         else:
-            lg.warning('No phenotype given, using fam file instead.')
-            self.pheno = self.fam
-            self.sub_in = np.ones(self.n, bool)
-            self.subject_ids = self.fam['iid'].values
-        self.plink_reader.close()
+            mpheno = fam
+            if mpheno.shape[1] < 6:
+                raise ValueError('No phenotype present')
+        return mpheno
 
-    def _process_pheno(self, pheno_file):
-        pheno = pd.read_table(pheno_file)
-        import_n, import_p = pheno.shape
-        lg.debug('loaded phenotype with the shape %s', pheno.shape)
-        header = pheno.columns.values
-        lg.debug('Phenotype has the following headers %s', header)
-        assert len(header) > 1
-        assert np.all([k in header for k in ['IID', 'FID']]) or \
-            np.all([k in header for k in ['iid', 'fid']])
-        if 'IID' in header:
-            pheno.rename(columns={'IID': 'iid', 'FID': 'fid'},
-                         inplace=True)
-        if np.all([k in header for k in ['PAT', 'MAT', 'SEX']]):
-            pheno.drop(['PAT', 'MAT', 'SEX'], axis=1, inplace=True)
-        pheno[['iid', 'fid']] = pheno[['iid', 'fid']].astype(str)
-        new_fam = self.fam.merge(pheno, 'inner', on=['iid', 'fid'])
-        merged_n, merged_p = new_fam.shape
-        lg.debug('Format of the new fam file %s', new_fam.shape)
-        if merged_n < import_n:
-            lg.warning('Out of %s subjects, %s were in fam file',
-                    import_n, merged_n)
-            if merged_n == 0:
-                raise ValueError('No subject present in file')
-        pheno_columns = [k in ['fid', 'iid'] for k in new_fam.columns.values]
-        pheno_columns = new_fam.columns.values[~np.array(pheno_columns)]
-        lg.info('Extracted and integrated the following phenotypes %s',
-                pheno_columns)
-        self.pheno_names = pheno_columns
-        self.subject_ids = new_fam['iid'].values
-        self.sub_in = [k in self.subject_ids for k in self.fam['iid']]
-        self.n = sum(self.sub_in)
-        return new_fam
-
-    def _preprocessing_ldblock(self) -> dict:
-        if self.groups is None:
-            return None
+    def _check_magic_number(self, plink_file: str):
+        variant_major = '6c1b01'
+        sample_major = '6c1b00'
+        with open(plink_file+'.bed', 'rb') as f:
+            magic = f.read(3)
+            magic = magic.hex()
+        lg.debug('first three bytes in hex: %s', magic)
+        if magic == variant_major:
+            raise ValueError('Please use bed file in sample-major format')
+        elif magic == sample_major:
+            lg.info('sample major format')
+            return True
         else:
-            out = {}
-            for chr in self.chromosoms:
-                subset_blocks = self.groups[self.groups.chr == chr]
-                subset_bim = self.bim[self.bim.chrom == chr]
-                out[chr] = []
-                for index, row in subset_blocks.iterrows():
-                    start = row['start']
-                    end = row['stop']
-                    rsids = subset_bim[
-                        (self.bim.pos >= start)
-                        & (self.bim.pos <= end)
-                         ].index.values
-                    out[chr].append(rsids)
-            return out
+            raise ValueError('Could not identify plink file')
 
-    def _chunks(self, group, chunk_size):
-        """Yield successive n-sized chunks from l."""
-        for i in range(0, len(group), chunk_size):
-            yield group[i:i + chunk_size]
+    def _binary_genotype(self, input_bytes: bytes, snps: BoolVector = None):
+        # lg.debug('Input: %s', input_bytes)
+        a = bitarray(endian='little')
+        a.frombytes(input_bytes)
+        # lg.debug('How does the bytes look like: %s', a)
+        # encoding missing 01 as 0
+        d = {2: bitarray(b'00'), 1: bitarray(b'01'),
+             0: bitarray(b'11'), np.nan: bitarray(b'10')}
+        # lg.debug("Decoding dict: %s", d)
+        genotypes = a.decode(d)
+        # remove overlaying genotypes
+        # lg.debug('Size of decoded: %s', len(genotypes))
+        for k in sorted(self._to_remove, reverse=True):
+            del genotypes[k]
+        genotypes = np.array(genotypes, dtype=np.uint8)
+        if snps is not None:
+            genotypes = genotypes[np.array(snps)]
+        np.nan_to_num(genotypes, copy=False)
+        return genotypes
 
-    def rewrite(self, chunk_size: int, folder: str):
-        assert self.groups is not None
-        assert os.path.isdir(folder)
+    def _iter_geno(self, mini_batch_size: int, snps: BoolVector = None):
+        if snps is None:
+            p = self.p
+        else:
+            assert self.p == len(snps)
+            p = sum(snps)
 
-        grouped_samples = list(self._chunks(self.subject_ids, chunk_size))
-        rsid = [[k for k in chr] for key, chr in self.groups.items()]
-        rsid = list(chain.from_iterable(rsid))
-        rsid = np.concatenate(rsid).ravel().tolist()
-        lg.debug("RSID: %s", rsid)
-        p = self.p
-        lg.debug('using %s SNPs', p)
-        output_files = list()
+        with open(self.plink_file+'.bed', 'rb') as f:
+            input_bytes = f.read(3)
+            while True:
+                genotype_matrix = np.zeros((mini_batch_size, p))
+                for sample in range(mini_batch_size):
+                    input_bytes = f.read(self._size)
+                    if not input_bytes:
+                        f.seek(3)
+                        input_bytes = f.read(self._size)
+                    genotype_matrix[sample, :] = self._binary_genotype(input_bytes,
+                                                                       snps)
+                yield genotype_matrix
 
-        for file_id, s in enumerate(grouped_samples):
-            n = len(s)
-            lg.info('Getting sample block %s with %s samples', file_id, n)
-            genotypematrix = np.zeros((n, p), dtype=np.int8)
-            reader = PyPlink(self.plink_file)
-            pos_index = 0
-            sub_in = [k in s for k in self.fam['iid']]
-            lg.debug(sub_in)
-            lg.debug('')
-            out_path = os.path.join(folder, 'sample_major_'+str(file_id)+'.npy')
-            output_files.append(out_path)
-            for snp, genotype in reader.iter_geno():
-                genotypematrix[:, pos_index] = genotype[sub_in]
-                pos_index += 1
-                if pos_index % 10000 == 0:
-                    lg.debug('Currently at: %s', pos_index)
-            reader.close()
-            np.save(out_path, (genotypematrix, sub_in))
-            lg.debug('Wrote sample block to disk at %s', out_path)
+    def _iter_pheno(self, pheno: str, mini_batch_size: int):
+        start = 0
+        end = mini_batch_size
+        index = np.arange(self.n)
+        iter_over_all = False
+        y = self.pheno[pheno]
+        while True:
+            if end >= self.n:
+                end = end - self.n
+            if start >= self.n:
+                start = start - self.n
+            bool_index = ~((index >= start) ^ (index < end))
+            if start > end:
+                bool_index = ~(bool_index)
+                iter_over_all = True
+            batch_index = index[bool_index]
+            yyield = np.zeros((mini_batch_size, 1))
+            for u, i in np.ndenumerate(batch_index):
+                yyield[u] = y[i]
+            start = np.abs(end)
+            end = start + mini_batch_size
+            yield yyield
 
-        group_info = 'grouped_samples.pickle'
-        with open(group_info, 'wb') as f:
-            pickle.dump(grouped_samples, f)
-        lg.info('Grouped sample stroed in %s', group_info)
-        return output_files, grouped_samples
+    def read(self, phenotype: str, mini_batch_size: int = 1,
+             snps: BoolVector = None):
+        """
+        Reader for plink major file format.
+
+        :param phenotype: str of phenotype name
+        :param batch_size: how many samples to load
+        :param snps: an optional list of bool to inlcude/exclude certain snps
+        :return: genotype_matrix
+        """
+        pheno_iter = self._iter_pheno(phenotype, mini_batch_size)
+        geno_iter = self._iter_geno(mini_batch_size, snps)
+
+        for geno, pheno in zip(geno_iter, pheno_iter):
+            lg.debug('Shape of geno: %s Shape of pheno: %s', geno.shape,
+                     pheno.shape)
+            yield geno, pheno
 
