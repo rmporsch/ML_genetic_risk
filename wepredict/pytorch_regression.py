@@ -11,11 +11,6 @@ from sklearn.utils import shuffle
 
 lg = logging.getLogger(__name__)
 
-def hard_sigmoid(x):
-    """Hard Sigmoid function."""
-    return torch.min(torch.max(x, torch.zeros_like(x)), torch.ones_like(x))
-
-
 class ResultCollector(object):
 
     def __init__(self,n: int, p: int, lamb: float, epochs: int, type: str, penal_type: str):

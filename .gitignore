@@ -132,3 +132,5 @@ data
 *tensorboard
 notebooks/tensorboard
 *png*
+*jpeg*
+*.fam

@@ -2,7 +2,7 @@ from dask.distributed import Client, LocalCluster
 from dask import delayed
 import dask
 from wepredict.pytorch_regression import pytorch_linear
-from wepredict.plink_reader import Genetic_data_read, get_genotypes
+from pyplink_major.plink_reader import Genetic_data_read, get_genotypes
 from wepredict.helpers import *
 
 
