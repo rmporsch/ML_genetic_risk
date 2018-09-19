@@ -61,6 +61,7 @@ class Major_reader(object):
 
         :param plink_file: plink file stem
         :param pheno: path to pheno file
+        :param ldblock_file: path to ld block file
         """
         super(Major_reader, self).__init__()
         self.plink_file = plink_file
@@ -78,6 +79,7 @@ class Major_reader(object):
         self._size = -(-self.p // 4)
         self._overflow = self._size*4 - self.p
         self._to_remove = [self.p + k for k in range(self._overflow)]
+        lg.debug('Removing bytes: %s', self._to_remove)
         if ldblock_file is not None:
             self.ldblocks = self._check_ldblocks(ldblock_file)
         else:
@@ -124,9 +126,11 @@ class Major_reader(object):
             fam.columns = columns[:-1]
         else:
             raise ValueError('The fam file seems wrongly formated')
+        fam[['FID', 'IID']] = fam[['FID', 'IID']].applymap(str)
 
         if pheno is not None:
             pheno = pd.read_table(pheno)
+            pheno[['FID', 'IID']] = pheno[['FID', 'IID']].applymap(str)
             n_import = pheno.shape[0]
             header = pheno.columns
             if np.all([k not in ['FID', 'IID'] for k in header]):
@@ -146,7 +150,7 @@ class Major_reader(object):
             lg.info('Extracted and integrated the following phenotypes %s',
                     pheno_columns)
             self.pheno_names = pheno_columns
-            self.subject_ids = mpheno['iid'].values
+            self.subject_ids = mpheno.IID.values
         else:
             mpheno = fam
             if mpheno.shape[1] < 6:
@@ -168,24 +172,26 @@ class Major_reader(object):
         else:
             raise ValueError('Could not identify plink file')
 
-    def _binary_genotype(self, input_bytes: bytes, snps: BoolVector = None):
-        # lg.debug('Input: %s', input_bytes)
+    @staticmethod
+    def _bgeno(input_bytes: bytes):
         a = bitarray(endian='little')
         a.frombytes(input_bytes)
         # lg.debug('How does the bytes look like: %s', a)
         # encoding missing 01 as 0
         d = {2: bitarray(b'00'), 1: bitarray(b'01'),
-             0: bitarray(b'11'), np.nan: bitarray(b'10')}
+             0: bitarray(b'11'), 9: bitarray(b'10')}
         # lg.debug("Decoding dict: %s", d)
         genotypes = a.decode(d)
-        # remove overlaying genotypes
-        # lg.debug('Size of decoded: %s', len(genotypes))
+        return genotypes
+
+    def _binary_genotype(self, input_bytes: bytes, snps: BoolVector = None):
+        genotypes = self._bgeno(input_bytes)
         for k in sorted(self._to_remove, reverse=True):
             del genotypes[k]
         genotypes = np.array(genotypes, dtype=np.uint8)
         if snps is not None:
             genotypes = genotypes[np.array(snps)]
-        np.nan_to_num(genotypes, copy=False)
+        genotypes[genotypes==9] = 0
         return genotypes
 
     def _iter_geno(self, mini_batch_size: int, snps: BoolVector = None):
@@ -248,4 +254,5 @@ class Major_reader(object):
             lg.debug('Shape of geno: %s Shape of pheno: %s', geno.shape,
                      pheno.shape)
             yield geno, pheno
+
 
