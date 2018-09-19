@@ -1,8 +1,6 @@
 from wepredict.pytorch_regression import pytorch_linear
-from wepredict.plink_reader import Genetic_data_read, get_genotypes
+from pyplink_major.plink_reader import Genetic_data_read, get_genotypes
 from wepredict.helpers import *
-import sys
-
 
 if __name__ == '__main__':
     plink_file = 'data/chr10'
