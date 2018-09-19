@@ -22,7 +22,7 @@
 \title{An Introduction to Neural Networks}
 \date{\today}
 \author{Robert M. Porsch}
-\institute{Center of Genomic Science}
+\institute{Center for Genomic Science}
 \begin{document}
 \maketitle
 
@@ -42,7 +42,7 @@
   \end{itemize}
   Resources:
   \begin{itemize}
-    \item I used Andrew Ng course as a guideline for this presentation
+    \item Andrew Ng coursera course
   \end{itemize}
 \end{frame}
 
@@ -178,7 +178,7 @@
   \begin{equation}
     L(\hat{y}, y) = \frac{1}{2m} \sum^m_{i=1} {(\hat{y}^{(i)} - y^{(i)})}^2
   \end{equation}
-  with the parameters $\theta$ representing all parameters ($W, b$) or in a binary classification case:
+  or in a binary classification case:
   \begin{equation}
     L(\hat{y}, y) = - \sum^m_{i=1} y^{(i)}\log(\hat{y}^{(i)}) + (1- y^{(i)})\log(1-\hat{y}^{(i)})
   \end{equation}
@@ -186,6 +186,7 @@
   \begin{equation}
     \arg\min_\theta{L_\theta(\hat{y}, y)}
   \end{equation}
+  with the parameters $\theta$ representing all parameters in all layers. 
 \end{frame}
 
 \begin{frame}[t]{Gradient Descent}
@@ -208,7 +209,7 @@
   In the linear regression case:
   \begin{equation}
     \begin{align*}
-      L(w, b, y) &= \frac{1}{2m} \sum^m_{i=1} (wx^{(i)}+b) - y^{(i)})^2 \\
+      L(w, b, y) &= \frac{1}{2m} \sum^m_{i=1} ((wx^{(i)}+b) - y^{(i)})^2 \\
       \frac{\partial L}{\partial w} &= \frac{1}{m} \sum^m_{i=1} ((wx^{(i)}+b) - y^{(i)})x^{(i)} \\
       \frac{\partial L}{\partial b} &= \frac{1}{m} \sum^m_{i=1} ((wx^{(i)}+b) - y^{(i)}) \\
     \end{align}
