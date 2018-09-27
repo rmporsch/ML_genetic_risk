@@ -22,7 +22,7 @@ class PreProcess(object):
         self.plink_path = plink_path
         self.ld_block_path = ld_block_path
         self.plink_files = self._expand_path(plink_path)
-        self.sample_major = self._check_files(plink_path)
+        self.sample_major = self._check_files(self.plink_files)
         self.plink2_binary =  os.path.join(os.path.dirname(__file__),
                                            'bin/plink2')
         self.plink_binary =  os.path.join(os.path.dirname(__file__),
@@ -43,11 +43,13 @@ class PreProcess(object):
             files = glob(plink_path)
             bed_files = [x for x in files if x.endswith('bed')]
             plink_stemfiles = [os.path.splitext(x)[0] for x in bed_files]
+            lg.debug('Selected plink files %s', plink_stemfiles)
             return plink_stemfiles
         else:
+            lg.debug('Selected plink files %s', [plink_path])
             return [plink_path]
 
-    def _check_files(self, plink_path: str):
+    def _check_files(self, plink_path: List):
         plink_type = list()
         fam1 = plink_path[0]+'.fam'
         for p in plink_path:
@@ -185,20 +187,26 @@ class PreProcess(object):
                 bim = self._load_bim(p+'.bim')
                 chromosomes = bim.chr.unique()
                 for index, row in self.ldblocks.iterrows():
-                    lg.debug('Processing %s', row)
                     chr, start, end = row['chr'], row['start'], row['stop']
                     if chr not in chromosomes:
                         continue
-                    file_name = [str(k) for k in [p, 'SampleMajor', chr, start, end]]
+                    lg.debug('Processing %s', row)
+                    if not os.path.isdir(os.path.join(output, 'chr'+str(chr))):
+                        os.mkdir(os.path.join(output, 'chr'+str(chr)))
+                    file_name = [str(k) for k in ['SampleMajor', chr, start, end]]
                     file_name = '_'.join(file_name)
-                    outpath = os.path.join(output, file_name)
+                    outpath = os.path.join(output, 'chr'+str(chr), file_name)
                     train_command = [self.plink2_binary, '--bfile', p,
-                                     '--chr', chr, '--from-bp', start, '--to-bp', end,
+                                     '--chr', str(chr),
+                                     '--from-bp', str(start),
+                                     '--to-bp', str(end),
                                      '--keep', '.train.temp',
                                      '--export', 'ind-major-bed',
                                      '--out', outpath+'_train']
                     dev_command = [self.plink2_binary, '--bfile', p,
-                                   '--chr', chr, '--from-bp', start, '--to-bp', end,
+                                   '--chr', str(chr),
+                                   '--from-bp', str(start),
+                                   '--to-bp', str(end),
                                    '--keep', '.dev.temp',
                                    '--export', 'ind-major-bed',
                                    '--out', outpath+'_dev']
