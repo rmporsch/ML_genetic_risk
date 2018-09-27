@@ -9,8 +9,10 @@ import pickle
 import subprocess
 from bitarray import bitarray
 from typing import List
+from typing import Tuple
 
 BoolVector = List[bool]
+SetTuple = Tuple[str, str]
 
 lg = logging.getLogger(__name__)
 
@@ -51,6 +53,45 @@ def transform_sample_major(plink_stem: str, output: str) -> str:
     lg.debug('Used command:\n%s', command)
     subprocess.run(command)
     return output
+
+def split_plink(plink_stem: str, output: str, ratio: float,
+                batch_size: int) -> SetTuple:
+    """
+    Split plink file in train and dev set. Convert to sample major.
+
+    :param plink_stem: Plink stem file
+    :param output: output path
+    :param ratio: ratio for train set
+    :param batch_size: batch size (floor( n / batch_size ) * batch_size)
+    :return: outputpaths for train and dev set
+    """
+    plink2_binary =  os.path.join(os.path.dirname(__file__), 'bin/plink2')
+    lg.debug('location of plink2 file: %s', plink2_binary)
+    columns = ['FID', 'IID', 'PAT', 'MAT', 'SEX', 'PHENO']
+    fam = pd.read_table(plink_stem+'.fam', header=None, names=columns)
+    n = fam.shape[0]
+    lg.debug('Found %s samples in fam file', n)
+    mask = np.random.rand(n) < ratio
+    train = fam[mask]
+    dev = fam[~mask]
+    train_n = train.shape[0]
+    dev_n = dev.shape[0]
+    lg.debug('split up into %s train and %s dev samples', train_n, dev_n)
+    train_max = int(np.floor(train_n / batch_size) * batch_size)
+    dev_max = int(np.floor(dev_n / batch_size) * batch_size)
+    train = train[:train_max]
+    dev = dev[:dev_max]
+    train.to_csv('train.temp.fam', index=None, header=None)
+    dev.to_csv('dev.temp.fam', index=None, header=None)
+    train_command = [plink2_binary, '--bfile', plink_stem, '--keep', 'train.temp.fam',
+                     '--export', 'ind-major-bed', '--out', output+'.train']
+    dev_command = [plink2_binary, '--bfile', plink_stem, '--keep', 'dev.temp.fam',
+                   '--export', 'ind-major-bed', '--out', output+'.dev']
+    lg.debug('Used command:\n%s', train_command)
+    lg.debug('Used command:\n%s', dev_command)
+    subprocess.run(train_command)
+    subprocess.run(dev_command)
+    return (output+'.train', output+'.dev')
 
 class Major_reader(object):
 
