@@ -91,7 +91,8 @@ class RegL1(nn.Module):
 class pytorch_linear(object):
     """Penalized regresssion with L1/L2/L0 norm."""
 
-    def __init__(self, train_iter, dev_iter, input_dim, n_samples, dev_num_iter, type='b'):
+    def __init__(self, train_iter, dev_iter, input_dim,
+                 n_samples, dev_num_iter, batch_size, type='b'):
         """
         Linear regression with L0 or L1.
 
@@ -110,6 +111,7 @@ class pytorch_linear(object):
         self.type = type
         self.train_iter = train_iter
         self.dev_iter = dev_iter
+        self.batch_size = batch_size
 
     def _model_builder(self, penal, **kwargs):
         if penal == 'l1':
@@ -175,16 +177,19 @@ class pytorch_linear(object):
                 training_accu = np.corrcoef(outputs.data.numpy().flatten(),
                                             yy.flatten())[0, 1]
                 results.iter_accu_training.append(training_accu)
+                lg.debug('Current training accu at %s: %s', u,
+                         training_accu)
                 results.loss.append(loss.item())
                 if u > self.n:
                     one_iter = True
-                u += 1
+                u += self.batch_size
             if _ % logging_freq == 0:
                 accu = self._accu_dev(model)
                 lg.info('Iteration %s: Accuracy: %s', _, accu)
                 results.add_valid(accu)
                 results.add_parameters(model.named_parameters())
         accu = self._accu_dev(model)
+        lg.debug('Last dev accu is %s', accu)
         coef = {}
         for name, param in model.named_parameters():
             new_name = name.replace('_origin.', '')
