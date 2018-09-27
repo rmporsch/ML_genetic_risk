@@ -11,7 +11,7 @@ class Plink_Test(unittest.TestCase):
 
     def setUp(self):
         self.plink_file = 'data/1kg_phase1_chr22'
-        self.pheno_file = 'data/simulated_chr10.txt'
+        self.pheno_file = 'data/sim_1000G_chr10.txt'
         self.ld_block_file = 'data/Berisa.EUR.hg19.bed'
 
     def test_preprocessing(self):

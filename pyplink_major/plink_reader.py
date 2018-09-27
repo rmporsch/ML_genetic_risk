@@ -9,8 +9,10 @@ import pickle
 import subprocess
 from bitarray import bitarray
 from typing import List
+from typing import Tuple
 
 BoolVector = List[bool]
+SetTuple = Tuple[str, str]
 
 lg = logging.getLogger(__name__)
 
@@ -36,21 +38,6 @@ def get_genotypes(rsid, plink_path, sub_in):
     reader.close()
     return genotypematrix
 
-def transform_sample_major(plink_stem: str, output: str) -> str:
-    """
-    Transform plink variant major to sample major.
-
-    :param plink_stem: path to plink-stem
-    :param output:  output path
-    :return:  output path
-    """
-    plink2_binary =  os.path.join(os.path.dirname(__file__), 'bin/plink2')
-    lg.debug('location of plink2 file: %s', plink2_binary)
-    command = [plink2_binary, '--bfile', plink_stem,
-               '--export', 'ind-major-bed', '--out', output]
-    lg.debug('Used command:\n%s', command)
-    subprocess.run(command)
-    return output
 
 class Major_reader(object):
 
