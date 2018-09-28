@@ -172,6 +172,77 @@ class PreProcess(object):
             subprocess.run(train_command)
             subprocess.run(dev_command)
 
+    def add_train_dev_split(self, train, dev):
+        """
+        Short function to write train and dev to disk in required format.
+        :param train: pandas dataframe of train
+        :param dev: pandas dataframe of dev
+        :return: None
+        """
+        train.to_csv('.train.temp', index=None, header=None)
+        dev.to_csv('.dev.temp', index=None, header=None)
+
+
+    def single_block_split(self, plink_stem: str, output: str, chr: int, start: int, end: int,
+                           sample_split: bool = True):
+        """
+        Split a plink file to a single LD block or region.
+
+        :param plink_stem: path to plink stem
+        :param output: outputdir
+        :param chr: chr (int)
+        :param start: start in bp (int)
+        :param end: end in np (int)
+        :param sample_split: bool, also split data into test, train
+        :return: path to plink stem
+        """
+        if sample_split:
+            assert os.path.isfile('.train.temp')
+            assert os.path.isfile('.dev.temp')
+            bim = self._load_bim(plink_stem+'.bim')
+            chromosomes = bim.chr.unique()
+            assert chr in chromosomes
+            file_name = [str(k) for k in ['SampleMajor', chr, start, end]]
+            file_name = '_'.join(file_name)
+            outpath = os.path.join(output, 'chr'+str(chr), file_name)
+            train_command = [self.plink2_binary, '--bfile', plink_stem,
+                             '--chr', str(chr),
+                             '--from-bp', str(start),
+                             '--to-bp', str(end),
+                             '--keep', '.train.temp',
+                             '--export', 'ind-major-bed',
+                             '--out', outpath+'_train']
+            dev_command = [self.plink2_binary, '--bfile', plink_stem,
+                           '--chr', str(chr),
+                           '--from-bp', str(start),
+                           '--to-bp', str(end),
+                           '--keep', '.dev.temp',
+                           '--export', 'ind-major-bed',
+                           '--out', outpath+'_dev']
+            lg.debug('Used command:\n%s', train_command)
+            lg.debug('Used command:\n%s', dev_command)
+            subprocess.run(train_command)
+            subprocess.run(dev_command)
+            return (outpath+'_train', outpath+'_dev')
+        else:
+            bim = self._load_bim(plink_stem+'.bim')
+            chromosomes = bim.chr.unique()
+            assert chr in chromosomes
+            file_name = [str(k) for k in ['SampleMajor', chr, start, end]]
+            file_name = '_'.join(file_name)
+            outpath = os.path.join(output, 'chr'+str(chr), file_name)
+            command = [self.plink2_binary, '--bfile', plink_stem,
+                             '--chr', str(chr),
+                             '--from-bp', str(start),
+                             '--to-bp', str(end),
+                             '--keep', '.train.temp',
+                             '--export', 'ind-major-bed',
+                             '--out', outpath]
+            lg.debug('Used command:\n%s', command)
+            subprocess.run(command)
+            return outpath
+
+
     def split_plink_ldblock(self, output: str, sample_split: bool = True):
         """
         Splits plink file into LD blocks and wirites them in sample major format.
