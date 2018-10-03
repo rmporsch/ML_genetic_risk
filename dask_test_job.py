@@ -4,9 +4,9 @@ from dask_jobqueue import PBSCluster
 import pickle
 import numpy as np
 import pandas as pd
-from weepredict.helpter_function import save_pickle, load_pickle
+from weepredict.helpter_function import save_pickle
 from wepredict.wepredict import wepredict
-from wepredict.plink_reader import Genetic_data_read
+from pyplink_major.plink_reader import Genetic_data_read
 from glob import glob
 import os
 import sys

@@ -1,15 +1,4 @@
-import os
-from wepredict.plink_reader import *
-from notify.notify import notify
 import logging
-import numpy
-import os
-from wepredict.plink_reader import *
-import logging
-import pickle
-import pandas as pd
-import tensorflow as tf
-from sklearn.preprocessing import scale
 from nnpredict.nnpredict import NNpredict
 
 

@@ -1,5 +1,5 @@
 """Convert a plink bed file into LD blocks."""
-from wepredict.plink_reader import Genetic_data_read
+from pyplink_major.plink_reader import Genetic_data_read
 from wepredict.data_download import genetic_testdata
 import sys
 

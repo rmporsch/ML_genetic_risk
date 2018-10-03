@@ -56,8 +56,8 @@ def torch_model(x_train, y_train, x_valid, y_valid, alphas, regu):
 
 if __name__ == '__main__':
     n = 10000
-    p = 10000
-    null_prop = 0.99
+    p = 1000
+    null_prop = 0.95
     y, pred = sim(n, p, null_prop)
     alpha_values = np.arange(0.001, 0.01, 0.001)
     lg.info('Number of alphas: %s', alpha_values)
@@ -66,7 +66,7 @@ if __name__ == '__main__':
                                                         random_state=42)
     del pred
 
-    regus = ['l1', 'l0', 'l02']
+    regus = ['l1', 'l0']
     sample_limit = np.logspace(2, 4, 10, dtype=int)
     assert sample_limit[-1] == n
     out = dict()
@@ -84,9 +84,9 @@ if __name__ == '__main__':
             lg.info('Best Torch model %s: %s with %s', l, torch_out.accu, s)
 
     import pickle
-    with open('l1_l0_l02_by_samplesize.pickle', 'wb') as f:
+    with open('l1_l0_by_samplesize.pickle', 'wb') as f:
         pickle.dump(out, f)
-    with open('l1_l0_l02_by_samplesize_everything.pickle', 'wb') as f:
+    with open('l1_l0_by_samplesize_everything.pickle', 'wb') as f:
         pickle.dump(everything, f)
 
     from notify.notify import notify
