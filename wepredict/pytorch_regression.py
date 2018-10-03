@@ -145,6 +145,18 @@ class pytorch_linear(object):
             corrs.append(training_accu)
         return np.mean(corrs)
 
+    def _prediction_dev(self, model):
+        pred = list()
+        for _ in range(self.dev_num_iter):
+            xx, yy = next(self.dev_iter)
+            valid_x = Variable(torch.from_numpy(xx)).float()
+            predict, penalty = model.forward(valid_x, False)
+            pp = predict.data.numpy().flatten()
+            pred.append(pp)
+        lg.debug('Prediction: %s', pred)
+        return np.concatenate(pred)
+
+
 
     def run(self, penal: str = 'l1', lamb: float = 0.01,
             epochs: int = 201, l_rate: float = 0.01, logging_freq=100):
@@ -194,6 +206,6 @@ class pytorch_linear(object):
         for name, param in model.named_parameters():
             new_name = name.replace('_origin.', '')
             coef[new_name] = param.data.numpy()
-
-        results.final_results(accu, [], coef)
+        dev_pred = self._prediction_dev(model)
+        results.final_results(accu, dev_pred, coef)
         return results
