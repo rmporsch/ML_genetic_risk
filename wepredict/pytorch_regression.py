@@ -4,10 +4,8 @@ import datetime
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
-from sklearn.preprocessing import scale
 import logging
 from wepredict.l0_norm import L0Linear
-from sklearn.utils import shuffle
 
 lg = logging.getLogger(__name__)
 
