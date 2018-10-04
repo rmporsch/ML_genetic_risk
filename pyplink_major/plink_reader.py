@@ -201,6 +201,38 @@ class Major_reader(object):
                                                                        snps)
                 yield genotype_matrix
 
+    def _one_iter_geno(self, snps: list = None):
+        if snps is not None:
+            assert self.p == len(snps)
+        with open(self.plink_file+'.bed', 'rb') as f:
+            input_bytes = f.read(3)
+            while input_bytes != '':
+                input_bytes = f.read(self._size)
+                if input_bytes:
+                    yield self._binary_genotype(input_bytes, snps)
+                else:
+                    break
+
+    def _one_iter_pheno(self, pheno):
+        y = self.pheno[pheno]
+        for i in y:
+            yield i
+
+    def one_iter(self, pheno: str, snps: list = None):
+        """
+        Simple interator for one single sample at a time
+
+        :param pheno: phenotype to iterate over
+        :param snps: potential subset of SNPs (optional)
+        :return: (geno, pheno)
+        """
+        pheno_iter = self._one_iter_pheno(pheno)
+        geno_iter = self._one_iter_geno(snps)
+
+        for geno, pheno in zip(geno_iter, pheno_iter):
+            yield geno, pheno
+
+
     def _iter_pheno(self, pheno: str, mini_batch_size: int):
         start = 0
         end = mini_batch_size
