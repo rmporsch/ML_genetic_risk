@@ -9,7 +9,7 @@ lg = logging.getLogger(__name__)
 class LinearModel:
 
     def __init__(self, X, y, bool_blocks: list, keep_prob: float,
-                 learning_rate: float, penal: float):
+                 learning_rate: float, penal: float, weights = None):
         self.X = X
         self.y = y
         self.penal = penal
@@ -21,6 +21,8 @@ class LinearModel:
         self.training = tf.cond(keep_prob < 1.0, lambda: tf.constant(True),
                                 lambda:tf.constant(False))
         self.streaming_mean_corr = None
+        if weights is not None:
+            self.weights = tf.convert_to_tensor(weights, dtype=tf.float32)
         lg.debug('Batch size is: %s', self.batch_size)
         lg.debug('Learning rate is set to %s', self.learning_rate)
         lg.debug('Number of blocks is set to %s', self.num_blocks)
@@ -73,8 +75,14 @@ class LinearModel:
                 with tf.variable_scope('LD_block' + str(i)):
                     small_block = tf.boolean_mask(self.X, b, axis=1)
                     small_block.set_shape((self.batch_size, np.sum(b)))
+                    if self.weights is not None:
+                        small_weights = tf.boolean_mask(self.weights, b, axis=1)
+                        small_weights.set_shape((1, np.sum(b)))
+                        initial_values = small_weights
+                    else:
+                        initial_values = rand_norm_init
                     y_ = tf.layers.dense(small_block, 1, kernel_regularizer=l1,
-                                         kernel_initializer=rand_norm_init)
+                                         kernel_initializer=initial_values)
                     collector.append(y_)
                     if i % 10 == 0:
                         lg.debug('Made tensors for LD block %s', i)
