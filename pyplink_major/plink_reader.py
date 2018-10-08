@@ -179,10 +179,10 @@ class Major_reader(object):
             p = self.p
         for k in sorted(self._to_remove, reverse=True):
             del genotypes[k]
-        genotypes = np.array(genotypes, dtype=np.uint8)
+        genotypes = np.array(genotypes, dtype=np.float16)
         if snps is not None:
             genotypes = genotypes[np.array(snps)]
-        genotypes[genotypes==9] = 0
+        genotypes[genotypes == 9] = 0
         return genotypes.reshape(1, p)
 
     def _iter_geno(self, mini_batch_size: int, snps: BoolVector = None):
@@ -220,7 +220,7 @@ class Major_reader(object):
     def _one_iter_pheno(self, pheno):
         y = self.pheno[pheno]
         for i in y:
-            yield np.array([i]).reshape(1,1)
+            yield np.array([i]).reshape(1, 1)
 
     def one_iter(self, pheno: str, snps: list = None):
         """

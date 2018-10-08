@@ -1,9 +1,7 @@
 import os
-import pandas as pd
 import numpy as np
 import logging
 import pickle
-from sklearn.model_selection import train_test_split
 import tensorflow as tf
 from nnpredict.models import LinearModel
 from datetime import datetime
@@ -19,12 +17,11 @@ class NNpredict(object):
                  tb_path: str = 'tensorboard/neural_network/'):
         super(NNpredict, self).__init__()
         self.ld_blocks = pickle.load(open(ld_blocks, 'rb'))[10]
-        self.dtrain = pr.Major_reader(plink_file_train, pheno_file, ld_blocks)
-        self.ddev = pr.Major_reader(plink_file_dev, pheno_file, ld_blocks)
+        self.dtrain = pr.Major_reader(plink_file_train, pheno_file)
+        self.ddev = pr.Major_reader(plink_file_dev, pheno_file)
         assert self.dtrain.p == self.ddev.p
         self.p = self.ddev.p
         self.n = self.dtrain.n
-        tb_path = 'tensorboard/neural_network/'
         self.bool_blocks = self._make_block_id()
         self.tb_path = tb_path
         lg.debug('Available LD blocks are %s', len(self.ld_blocks))
@@ -48,11 +45,11 @@ class NNpredict(object):
         output_shapes = (tf.TensorShape([None, self.p]),
                          tf.TensorShape([None, 1]))
         train_dataset = dd.from_generator(lambda: self.dtrain.one_iter(pheno_name),
-                                          output_types=(tf.int8, tf.float16),
-                                          output_shapes=output_shapes)
+                                          output_shapes=output_shapes,
+                                          output_types=(tf.float32, tf.float32))
         dev_dataset = dd.from_generator(lambda: self.ddev.one_iter(pheno_name),
-                                        output_types=(tf.int8, tf.float16),
-                                        output_shapes=output_shapes)
+                                        output_shapes=output_shapes,
+                                        output_types=(tf.float32, tf.float32))
         return train_dataset, dev_dataset
 
     def linear_model(self, epochs: int = 400, batch_size: int = 100,
@@ -70,24 +67,43 @@ class NNpredict(object):
         :return: None
         """
         now = datetime.now()
-        now = now.strftime('%d/%m/%Y-%H:%M:%S')
+        now = now.strftime('%Y/%m/%d/%H-%M-%S')
         lg.debug('Current time: %s', now)
+        # tensorboard stuff
         train_path = os.path.join(self.tb_path, 'train-'+tb_name+now)
         dev_path = os.path.join(self.tb_path, 'dev-'+tb_name+now)
+        lg.debug('Saving tensorboard at:\n train: %s \n test: %s',
+                 train_path, dev_path)
 
-        keep_prob = tf.placeholder(tf.float32, None, name='dropout_prob')
-        train_dataset, dev_dataset = self._make_dataset(pheno_name)
+        # data stuff
+        dd = tf.data.Dataset()
+        output_shapes = (tf.TensorShape([None, self.p]),
+                         tf.TensorShape([None, 1]))
+        train_dataset = dd.from_generator(lambda: self.dtrain.one_iter(pheno_name),
+                                          output_shapes=output_shapes,
+                                          output_types=(tf.float32, tf.float32))
+        dev_dataset = dd.from_generator(lambda: self.ddev.one_iter(pheno_name),
+                                        output_shapes=output_shapes,
+                                        output_types=(tf.float32, tf.float32))
+        lg.debug('Made datasets.')
 
         train_dataset = train_dataset.batch(batch_size)
+        dev_dataset = dev_dataset.batch(50)
+
         train_iter = train_dataset.make_initializable_iterator()
         dev_iter = dev_dataset.make_initializable_iterator()
-        handle = tf.placeholder(tf.string, shape=[])
-        iter = tf.data.Iterator.from_string_handle(handle,
-                                                   train_dataset.output_types,
-                                                   train_dataset.output_shapes)
-        geno, pheno = iter.get_next()
+        handle = tf.placeholder(tf.string, shape=[], name='handle')
+        iterr = tf.data.Iterator.from_string_handle(handle,
+                                                   train_dataset.output_types)
+        geno, pheno = iterr.get_next()
+        bs = tf.shape(pheno, name='get_batchsize')[0]
+        geno_r = tf.reshape(geno, (bs, self.p), name='reshaping_geno')
+        pheno_r = tf.reshape(pheno, (bs, 1), name='reshaping_pheno')
+        keep_prob = tf.placeholder(tf.float32, None, name='dropout_prob')
+        lg.debug('Type of geno_sq: %s ', geno.dtype)
+        lg.debug('Type of pheno_sq: %s ', pheno.dtype)
 
-        model = LinearModel(geno, pheno, self.bool_blocks,
+        model = LinearModel(geno_r, pheno_r, self.bool_blocks,
                             keep_prob, l_rate, penal)
 
         train_writer = tf.summary.FileWriter(train_path,
@@ -96,12 +112,15 @@ class NNpredict(object):
         merged_summary = tf.summary.merge_all()
         init = tf.group(tf.global_variables_initializer(),
                         tf.local_variables_initializer())
+        lg.debug('Completed model build and collected variables.')
         with tf.Session() as sess:
             sess.run(init)
             train_handle = sess.run(train_iter.string_handle())
             dev_handle = sess.run(dev_iter.string_handle())
+            lg.debug('Starting epochs.')
             for i in range(epochs):
                 sess.run(train_iter.initializer)
+                lg.info('Epoch %s', i)
                 while True:
                     try:
                         _, loss, summary = sess.run([model.optimize,
@@ -113,12 +132,14 @@ class NNpredict(object):
                         break
                     train_writer.add_summary(summary, i)
                 if i % 10 == 0:
+                    lg.debug('Finished epoch %s running dev set', i)
                     sess.run(dev_iter.initializer)
                     while True:
                         try:
-                            summary = sess.run([merged_summary],
+                            summary, _ = sess.run([merged_summary, model.prediction],
                                                feed_dict={handle: dev_handle,
                                                           keep_prob: 1.0})
-                            dev_writer.add_summary(summary, i)
+
                         except tf.errors.OutOfRangeError:
                             break
+                        dev_writer.add_summary(summary, i)
