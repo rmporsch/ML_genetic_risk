@@ -150,15 +150,16 @@ class PreProcess(object):
         train = train[:train_max]
         dev = dev[:dev_max]
         del fam
-        train.to_csv('.train.temp', index=None, header=None)
-        dev.to_csv('.dev.temp', index=None, header=None)
+        train.to_csv('.train.temp', index=None, header=None, sep=' ')
+        dev.to_csv('.dev.temp', index=None, header=None, sep=' ')
         return train, dev
 
     def split_plink(self, output: str, extract_snps: str = None):
         assert os.path.isfile('.train.temp')
         assert os.path.isfile('.dev.temp')
         for p in self.plink_files:
-            outpath = os.path.join(output, 'SampleMajor')
+            nname = p.split('/')[-1]
+            outpath = os.path.join(output, nname+'_SampleMajor')
             train_command = [self.plink2_binary, '--bfile', p,
                              '--keep', '.train.temp',
                              '--export', 'ind-major-bed',
