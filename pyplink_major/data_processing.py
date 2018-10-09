@@ -154,7 +154,7 @@ class PreProcess(object):
         dev.to_csv('.dev.temp', index=None, header=None)
         return train, dev
 
-    def split_plink(self, output: str):
+    def split_plink(self, output: str, extract_snps: str = None):
         assert os.path.isfile('.train.temp')
         assert os.path.isfile('.dev.temp')
         for p in self.plink_files:
@@ -169,6 +169,11 @@ class PreProcess(object):
                            '--out', outpath+'_dev']
             lg.debug('Used command:\n%s', train_command)
             lg.debug('Used command:\n%s', dev_command)
+            if extract_snps is not None:
+                train_command.append('--extract')
+                train_command.append(extract_snps)
+                dev_command.append('--extract')
+                dev_command.append(extract_snps)
             subprocess.run(train_command)
             subprocess.run(dev_command)
 
