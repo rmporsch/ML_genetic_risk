@@ -4,10 +4,8 @@ import datetime
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
-from sklearn.preprocessing import scale
 import logging
 from wepredict.l0_norm import L0Linear
-from sklearn.utils import shuffle
 
 lg = logging.getLogger(__name__)
 
@@ -29,6 +27,7 @@ class ResultCollector(object):
         self.accu = None
         self.coef = None
         self.prediction_valid = None
+        self.prediction_train = None
         self.end_time = None
 
     def final_results(self, accu, prediction_valid, coef):
@@ -156,6 +155,21 @@ class pytorch_linear(object):
         lg.debug('Prediction: %s', pred)
         return np.concatenate(pred)
 
+    def _prediction_train(self, model):
+        pred = list()
+        one_iter = False
+        u = 0
+        while one_iter is False:
+            xx, yy = next(self.train_iter)
+            valid_x = Variable(torch.from_numpy(xx)).float()
+            predict, penalty = model.forward(valid_x, False)
+            pp = predict.data.numpy().flatten()
+            pred.append(pp)
+            if u >= self.n:
+                one_iter = True
+            u += self.batch_size
+        lg.debug('Prediction: %s', pred)
+        return np.concatenate(pred)
 
 
     def run(self, penal: str = 'l1', lamb: float = 0.01,
@@ -207,5 +221,6 @@ class pytorch_linear(object):
             new_name = name.replace('_origin.', '')
             coef[new_name] = param.data.numpy()
         dev_pred = self._prediction_dev(model)
+        results.prediction_train = self._prediction_train(model)
         results.final_results(accu, dev_pred, coef)
         return results

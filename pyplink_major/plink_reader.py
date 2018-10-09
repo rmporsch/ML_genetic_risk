@@ -173,13 +173,17 @@ class Major_reader(object):
 
     def _binary_genotype(self, input_bytes: bytes, snps: BoolVector = None):
         genotypes = self._bgeno(input_bytes)
+        if snps is not None:
+            p = len(snps)
+        else:
+            p = self.p
         for k in sorted(self._to_remove, reverse=True):
             del genotypes[k]
-        genotypes = np.array(genotypes, dtype=np.uint8)
+        genotypes = np.array(genotypes, dtype=np.float16)
         if snps is not None:
             genotypes = genotypes[np.array(snps)]
-        genotypes[genotypes==9] = 0
-        return genotypes
+        genotypes[genotypes == 9] = 0
+        return genotypes.reshape(1, p)
 
     def _iter_geno(self, mini_batch_size: int, snps: BoolVector = None):
         if snps is None:
@@ -200,6 +204,38 @@ class Major_reader(object):
                     genotype_matrix[sample, :] = self._binary_genotype(input_bytes,
                                                                        snps)
                 yield genotype_matrix
+
+    def _one_iter_geno(self, snps: list = None):
+        if snps is not None:
+            assert self.p == len(snps)
+        with open(self.plink_file+'.bed', 'rb') as f:
+            input_bytes = f.read(3)
+            while input_bytes != '':
+                input_bytes = f.read(self._size)
+                if input_bytes:
+                    yield self._binary_genotype(input_bytes, snps)
+                else:
+                    break
+
+    def _one_iter_pheno(self, pheno):
+        y = self.pheno[pheno]
+        for i in y:
+            yield np.array([i]).reshape(1, 1)
+
+    def one_iter(self, pheno: str, snps: list = None):
+        """
+        Simple interator for one single sample at a time
+
+        :param pheno: phenotype to iterate over
+        :param snps: potential subset of SNPs (optional)
+        :return: (geno, pheno)
+        """
+        pheno_iter = self._one_iter_pheno(pheno)
+        geno_iter = self._one_iter_geno(snps)
+
+        for geno, pheno in zip(geno_iter, pheno_iter):
+            yield geno, pheno
+
 
     def _iter_pheno(self, pheno: str, mini_batch_size: int):
         start = 0
