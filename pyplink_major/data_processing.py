@@ -150,8 +150,8 @@ class PreProcess(object):
         train = train[:train_max]
         dev = dev[:dev_max]
         del fam
-        train.to_csv('.train.temp', index=None, header=None)
-        dev.to_csv('.dev.temp', index=None, header=None)
+        train.to_csv('.train.temp', index=None, header=None, sep=' ')
+        dev.to_csv('.dev.temp', index=None, header=None, sep=' ')
         return train, dev
 
     def split_plink(self, output: str, extract_snps: str = None):
