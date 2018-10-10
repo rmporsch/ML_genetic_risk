@@ -3,7 +3,7 @@ import numpy as np
 import logging
 import pickle
 import tensorflow as tf
-from nnpredict.models import LinearModel
+from nnpredict.models import LinearModel, NNModel
 from datetime import datetime
 from pyplink_major import plink_reader as pr
 
@@ -13,32 +13,16 @@ class NNpredict(object):
     """Neural Network prediction."""
 
     def __init__(self, plink_file_train: str, plink_file_dev: str,
-                 pheno_file: str, ld_blocks: str,
+                 pheno_file: str,
                  tb_path: str = 'tensorboard/neural_network/'):
         super(NNpredict, self).__init__()
-        self.ld_blocks = pickle.load(open(ld_blocks, 'rb'))[10]
         self.dtrain = pr.Major_reader(plink_file_train, pheno_file)
         self.ddev = pr.Major_reader(plink_file_dev, pheno_file)
         assert self.dtrain.p == self.ddev.p
         self.p = self.ddev.p
         self.n = self.dtrain.n
-        self.bool_blocks = self._make_block_id()
         self.tb_path = tb_path
-        lg.debug('Available LD blocks are %s', len(self.ld_blocks))
 
-
-    def _make_block_id(self) -> list:
-        output = list()
-        u = 0
-        for i, b in enumerate(self.ld_blocks):
-            nn = len(b)
-            mask = np.zeros(self.p, dtype=bool)
-            mask[u:(u + nn)] = True
-            u += nn
-            output.append(mask)
-            if i % 10 == 0:
-                lg.debug('Processing LD block %s', i)
-        return output
 
     def _make_dataset(self, pheno_name: str):
         dd = tf.data.Dataset()
@@ -52,9 +36,10 @@ class NNpredict(object):
                                         output_types=(tf.float32, tf.float32))
         return train_dataset, dev_dataset
 
-    def linear_model(self, epochs: int = 400, batch_size: int = 100,
+    def run_model(self, epochs: int = 400, batch_size: int = 100,
                      l_rate: float = 0.001, penal: float = 0.005,
-                     pheno_name: str = 'V1', tb_name: str = ''):
+                     pheno_name: str = 'V1', tb_name: str = '',
+                  in_model=LinearModel, **kwargs):
         """
         Linear Model
 
@@ -64,6 +49,7 @@ class NNpredict(object):
         :param penal:
         :param pheno_name:
         :param tb_name:
+        :param in_model: Class of LinearModel or NN
         :return: None
         """
         now = datetime.now()
@@ -103,8 +89,7 @@ class NNpredict(object):
         lg.debug('Type of geno_sq: %s ', geno.dtype)
         lg.debug('Type of pheno_sq: %s ', pheno.dtype)
 
-        model = LinearModel(geno_r, pheno_r, self.bool_blocks,
-                            keep_prob, l_rate, penal)
+        model = in_model(geno_r, pheno_r, keep_prob, l_rate, penal, **kwargs)
 
         train_writer = tf.summary.FileWriter(train_path,
                                              tf.get_default_graph())
@@ -143,3 +128,4 @@ class NNpredict(object):
                         except tf.errors.OutOfRangeError:
                             break
                         dev_writer.add_summary(summary, i)
+
