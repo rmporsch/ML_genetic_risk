@@ -134,3 +134,11 @@ notebooks/tensorboard
 *png*
 *jpeg*
 *.fam
+
+*.data-00000-of-00001
+
+tf_model_V1/
+
+\.train\.temp
+
+\.dev\.temp
