@@ -39,7 +39,8 @@ class NNpredict(object):
     def run_model(self, epochs: int = 400, batch_size: int = 100,
                      l_rate: float = 0.001, penal: float = 0.005,
                      pheno_name: str = 'V1', tb_name: str = '',
-                  in_model=LinearModel, **kwargs):
+                  in_model=LinearModel, export_dir: str = os.getcwd(),
+                  **kwargs):
         """
         Linear Model
 
@@ -50,8 +51,14 @@ class NNpredict(object):
         :param pheno_name:
         :param tb_name:
         :param in_model: Class of LinearModel or NN
+        :param export_dir:
         :return: None
         """
+        export_dir = os.path.join(export_dir, 'tf_model_'+pheno_name)
+        lg.info('Writing finished model to %s', export_dir)
+        if os.path.isdir(export_dir):
+            lg.info('output dir already exsists, dealting')
+            os.removedirs(export_dir)
         now = datetime.now()
         now = now.strftime('%Y/%m/%d/%H-%M-%S')
         lg.debug('Current time: %s', now)
@@ -83,8 +90,8 @@ class NNpredict(object):
                                                    train_dataset.output_types)
         geno, pheno = iterr.get_next()
         bs = tf.shape(pheno, name='get_batchsize')[0]
-        geno_r = tf.reshape(geno, (bs, self.p), name='reshaping_geno')
-        pheno_r = tf.reshape(pheno, (bs, 1), name='reshaping_pheno')
+        geno_r = tf.reshape(geno, (bs, self.p), name='geno')
+        pheno_r = tf.reshape(pheno, (bs, 1), name='pheno')
         keep_prob = tf.placeholder(tf.float32, None, name='dropout_prob')
         lg.debug('Type of geno_sq: %s ', geno.dtype)
         lg.debug('Type of pheno_sq: %s ', pheno.dtype)
@@ -121,11 +128,14 @@ class NNpredict(object):
                     sess.run(dev_iter.initializer)
                     while True:
                         try:
-                            summary, _ = sess.run([merged_summary, model.prediction],
-                                               feed_dict={handle: dev_handle,
-                                                          keep_prob: 1.0})
+                            summary, _ = sess.run([merged_summary,
+                                                   model.prediction],
+                                                  feed_dict={handle: dev_handle,
+                                                             keep_prob: 1.0})
 
                         except tf.errors.OutOfRangeError:
                             break
                         dev_writer.add_summary(summary, i)
+            tf.saved_model.simple_save(sess, export_dir, {'geno': geno_r},
+                                       {'pheno': pheno_r})
 
