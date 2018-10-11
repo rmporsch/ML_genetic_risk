@@ -121,6 +121,7 @@ class NNpredict(object):
                                                      merged_summary],
                                                     feed_dict={keep_prob: 0.1,
                                                                handle: train_handle})
+                        lg.debug('Finished minibatch - train')
                     except tf.errors.OutOfRangeError:
                         break
                     train_writer.add_summary(summary, i)
@@ -133,7 +134,7 @@ class NNpredict(object):
                                                    model.prediction],
                                                   feed_dict={handle: dev_handle,
                                                              keep_prob: 1.0})
-
+                            lg.debug('Finished minibatch - dev')
                         except tf.errors.OutOfRangeError:
                             break
                         dev_writer.add_summary(summary, i)
