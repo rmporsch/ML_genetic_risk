@@ -137,7 +137,6 @@ class NNpredict(object):
                                                    model.prediction],
                                                   feed_dict={handle: dev_handle,
                                                              keep_prob: 1.0})
-
                             lg.debug('Finished minibatch - dev')
                         except tf.errors.OutOfRangeError:
                             break

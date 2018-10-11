@@ -4,9 +4,7 @@ import pandas as pd
 import os
 import numpy as np
 import logging
-from itertools import chain
 import pickle
-import subprocess
 from bitarray import bitarray
 from typing import List
 from typing import Tuple
@@ -121,7 +119,7 @@ class Major_reader(object):
             n_import = pheno.shape[0]
             header = pheno.columns
             if np.all([k not in ['FID', 'IID'] for k in header]):
-                raise ValueError('FID and IID needs to be in pheno file')
+                raise ValueError('FID and IID needs to be a pheno file')
             if np.all([k in header for k in ['PAT', 'MAT', 'SEX']]):
                 pheno.drop(['PAT', 'MAT', 'SEX'], axis=1, inplace=True)
 
@@ -136,6 +134,12 @@ class Major_reader(object):
             pheno_columns = [k for k in mpheno.columns if k not in fam.columns]
             lg.info('Extracted and integrated the following phenotypes %s',
                     pheno_columns)
+            for p in pheno_columns:
+                missing = mpheno[p].isnull().mean()
+                lg.debug('Missingness in %s is %s', p, missing)
+                if missing > 0.8:
+                    lg.warning('Removed %s due to missingnesses (>80%)')
+                    mpheno.drop(p, axis=1)
             self.pheno_names = pheno_columns
             self.subject_ids = mpheno.IID.values
         else:
@@ -234,7 +238,10 @@ class Major_reader(object):
         geno_iter = self._one_iter_geno(snps)
 
         for geno, pheno in zip(geno_iter, pheno_iter):
-            yield geno, pheno
+            if np.isnan(pheno):
+                continue
+            else:
+                yield geno, pheno
 
 
     def _iter_pheno(self, pheno: str, mini_batch_size: int):
