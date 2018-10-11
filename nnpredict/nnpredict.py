@@ -116,21 +116,24 @@ class NNpredict(object):
                 lg.info('Epoch %s', i)
                 while True:
                     try:
-                        _, loss, summary = sess.run([model.optimize,
+                        _, loss, summary, er = sess.run([model.optimize,
                                                      model.cost,
-                                                     merged_summary],
+                                                     merged_summary,
+                                                     model.error],
                                                     feed_dict={keep_prob: 0.1,
                                                                handle: train_handle})
+                        lg.debug('Loss %s, Error %s', loss, er)
                         lg.debug('Finished minibatch - train')
                     except tf.errors.OutOfRangeError:
                         break
                     train_writer.add_summary(summary, i)
+                    lg.info('Epoch: %s: Loss %s, Error %s', i, loss, er)
                 if i % 10 == 0:
                     lg.debug('Finished epoch %s running dev set', i)
                     sess.run(dev_iter.initializer)
                     while True:
                         try:
-                            summary, _ = sess.run([merged_summary,
+                            summary, pred, er = sess.run([merged_summary,
                                                    model.prediction],
                                                   feed_dict={handle: dev_handle,
                                                              keep_prob: 1.0})

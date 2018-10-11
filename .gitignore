@@ -128,7 +128,7 @@ data
 *.idea
 
 *venv*
-
+*dask-worker*
 *tensorboard
 notebooks/tensorboard
 *png*

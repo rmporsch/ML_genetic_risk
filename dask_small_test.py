@@ -1,4 +1,5 @@
 from dask.distributed import Client, LocalCluster
+from dask_jobqueue import PBSCluster
 from dask import delayed
 import dask
 from wepredict.pytorch_regression import pytorch_linear
@@ -14,7 +15,14 @@ if __name__ == '__main__':
     train_index, valid_index, test_index = generate_valid_test_data(data.n,
                                                                     0.1, 0.1)
 
-    cluster = LocalCluster()
+    cluster = PBSCluster(processes=1,
+            cores=1, memory="40GB",
+            queue='medium',
+            local_directory='$TMPDIR',
+            resource_spec='select=1:ncpus=12:mem=50gb',
+            walltime='12:00:00')
+    print(cluster.job_script())
+    cluster.scale(1)
     client = Client(cluster)
     cluster.scale(5)
     print(client)
@@ -32,4 +40,8 @@ if __name__ == '__main__':
         out.append(results)
 
     res = dask.compute(out)
+
+    import pickle
+    with open('simple_testing.pickle', 'wb') as f:
+        pickle.dump(res, f)
     print('done')
