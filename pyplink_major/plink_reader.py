@@ -238,6 +238,7 @@ class Major_reader(object):
 
         for geno, pheno in zip(geno_iter, pheno_iter):
             if np.isnan(pheno):
+                lg.debug('Found missing value, skipping')
                 continue
             else:
                 yield geno, pheno

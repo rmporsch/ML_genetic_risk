@@ -43,7 +43,7 @@ class NNpredict(object):
                   in_model=LinearModel, export_dir: str = os.getcwd(),
                   **kwargs):
         """
-        Linear Model
+        Run Tensorflow model.
 
         :param epochs:
         :param batch_size:
@@ -110,6 +110,8 @@ class NNpredict(object):
             sess.run(init)
             train_handle = sess.run(train_iter.string_handle())
             dev_handle = sess.run(dev_iter.string_handle())
+            train_dict = {keep_prob: 0.3, handle: train_handle}
+            dev_dict = {keep_prob: 1.0, handle: dev_handle}
             lg.debug('Starting epochs.')
             for i in range(epochs):
                 sess.run(train_iter.initializer)
@@ -117,13 +119,11 @@ class NNpredict(object):
                 while True:
                     try:
                         _, loss, summary, er = sess.run([model.optimize,
-                                                     model.cost,
-                                                     merged_summary,
-                                                     model.error],
-                                                    feed_dict={keep_prob: 0.1,
-                                                               handle: train_handle})
+                                                         model.cost,
+                                                         merged_summary,
+                                                         model.error],
+                                                        feed_dict=train_dict)
                         lg.debug('Loss %s, Error %s', loss, er)
-                        lg.debug('Finished minibatch - train')
                     except tf.errors.OutOfRangeError:
                         break
                     train_writer.add_summary(summary, i)
@@ -133,14 +133,16 @@ class NNpredict(object):
                     sess.run(dev_iter.initializer)
                     while True:
                         try:
-                            summary, pred, er = sess.run([merged_summary,
-                                                   model.prediction],
-                                                  feed_dict={handle: dev_handle,
-                                                             keep_prob: 1.0})
+                            summary, loss, er = sess.run([merged_summary,
+                                                          model.cost,
+                                                          model.error],
+                                                         feed_dict=dev_dict)
                             lg.debug('Finished minibatch - dev')
                         except tf.errors.OutOfRangeError:
                             break
+                        lg.info('Epoch: %s: Loss %s, Error %s', i, loss, er)
                         dev_writer.add_summary(summary, i)
+            # save model to disk
             tf.saved_model.simple_save(sess, export_dir, {'geno': geno_r},
                                        {'pheno': pheno_r})
 

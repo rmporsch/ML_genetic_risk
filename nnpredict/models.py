@@ -167,7 +167,7 @@ class NNModel(object):
 
     @define_scope(scope='optimization')
     def optimize(self):
-        optimizer = tf.train.AdamOptimizer(self.learning_rate)
+        optimizer = tf.train.AdagradOptimizer(self.learning_rate)
         return optimizer.minimize(self.cost)
 
     @define_scope(scope='error')
