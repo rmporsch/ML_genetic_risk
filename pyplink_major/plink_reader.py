@@ -71,7 +71,6 @@ class Major_reader(object):
             self.ldblocks = None
 
     def _check_ldblocks(self, ldblocks_path: str):
-        dirname = os.path.dirname(self.plink_file)
         pickel_path = self.plink_file+'.ld_blocks.pickel'
         if os.path.isfile(pickel_path):
             with open(pickel_path, 'rb') as f:
@@ -273,7 +272,7 @@ class Major_reader(object):
         Reader for plink major file format.
 
         :param phenotype: str of phenotype name
-        :param batch_size: how many samples to load
+        :param mini_batch_size: how many samples to load
         :param snps: an optional list of bool to inlcude/exclude certain snps
         :return: genotype_matrix
         """

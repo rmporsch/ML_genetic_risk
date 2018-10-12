@@ -18,6 +18,12 @@ SetTuple = Tuple[str, str]
 class PreProcess(object):
 
     def __init__(self, plink_path: str, ld_block_path: str = None):
+        """
+        Preprocessing of plink files for ML.
+
+        :param plink_path: path to plink stem or stems (use *)
+        :param ld_block_path: path to LD blocks in bed format
+        """
         super(PreProcess, self).__init__()
         self.plink_path = plink_path
         self.ld_block_path = ld_block_path
@@ -121,6 +127,7 @@ class PreProcess(object):
     def train_dev_split(self, batch_size: int, frac: float = None, n_train: int = None):
         """
         Splits a fam file into training and dev set
+
         :param batch_size: int of the chosen batch size
         :param frac: fraction of training samples
         :param n_train:  absolute number of training samples
@@ -155,6 +162,13 @@ class PreProcess(object):
         return train, dev
 
     def split_plink(self, output: str, extract_snps: str = None):
+        """
+        Split plink file into train and dev set.
+
+        :param output: output dir
+        :param extract_snps: optional list of snps to extract
+        :return: None
+        """
         assert os.path.isfile('.train.temp')
         assert os.path.isfile('.dev.temp')
         for p in self.plink_files:
@@ -181,6 +195,7 @@ class PreProcess(object):
     def add_train_dev_split(self, train, dev):
         """
         Short function to write train and dev to disk in required format.
+
         :param train: pandas dataframe of train
         :param dev: pandas dataframe of dev
         :return: None
@@ -264,24 +279,24 @@ class PreProcess(object):
                 bim = self._load_bim(p+'.bim')
                 chromosomes = bim.chr.unique()
                 for index, row in self.ldblocks.iterrows():
-                    chr, start, end = row['chr'], row['start'], row['stop']
-                    if chr not in chromosomes:
+                    chrom, start, end = row['chrom'], row['start'], row['stop']
+                    if chrom not in chromosomes:
                         continue
                     lg.debug('Processing %s', row)
-                    if not os.path.isdir(os.path.join(output, 'chr'+str(chr))):
-                        os.mkdir(os.path.join(output, 'chr'+str(chr)))
-                    file_name = [str(k) for k in ['SampleMajor', chr, start, end]]
+                    if not os.path.isdir(os.path.join(output, 'chrom'+str(chrom))):
+                        os.mkdir(os.path.join(output, 'chrom'+str(chrom)))
+                    file_name = [str(k) for k in ['SampleMajor', chrom, start, end]]
                     file_name = '_'.join(file_name)
-                    outpath = os.path.join(output, 'chr'+str(chr), file_name)
+                    outpath = os.path.join(output, 'chrom'+str(chrom), file_name)
                     train_command = [self.plink2_binary, '--bfile', p,
-                                     '--chr', str(chr),
+                                     '--chrom', str(chrom),
                                      '--from-bp', str(start),
                                      '--to-bp', str(end),
                                      '--keep', '.train.temp',
                                      '--export', 'ind-major-bed',
                                      '--out', outpath+'_train']
                     dev_command = [self.plink2_binary, '--bfile', p,
-                                   '--chr', str(chr),
+                                   '--chrom', str(chrom),
                                    '--from-bp', str(start),
                                    '--to-bp', str(end),
                                    '--keep', '.dev.temp',
@@ -297,17 +312,16 @@ class PreProcess(object):
                 chromosomes = bim.chr.unique()
                 for index, row in self.ldblocks.iterrows():
                     lg.debug('Processing %s', row)
-                    chr, start, end = row['chr'], row['start'], row['stop']
-                    if chr not in chromosomes:
+                    chrom, start, end = row['chrom'], row['start'], row['stop']
+                    if chrom not in chromosomes:
                         continue
-                    file_name = [str(k) for k in [p, 'SampleMajor', chr, start, end]]
+                    file_name = [str(k) for k in [p, 'SampleMajor', chrom, start, end]]
                     file_name = '_'.join(file_name)
                     outpath = os.path.join(output, file_name)
                     command = [self.plink2_binary, '--bfile', p,
-                                     '--chr', chr, '--from-bp', start, '--to-bp', end,
+                                     '--chrom', chrom, '--from-bp', start, '--to-bp', end,
                                      '--export', 'ind-major-bed',
                                      '--out', outpath+'_train']
                     lg.debug('Used command:\n%s', command)
                     subprocess.run(command)
-
 
