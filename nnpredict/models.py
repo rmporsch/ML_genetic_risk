@@ -118,8 +118,8 @@ class LinearModel(object):
                     if i % 10 == 0:
                         lg.debug('Made tensors for LD block %s', i)
         collection = tf.concat(collector, name='prediction_matrix', axis=1)
-        drop_out = tf.nn.dropout(collection, self.keep_prob)
-        y_hat = tf.layers.dense(drop_out, 1, name='combinging_linear',
+        # drop_out = tf.nn.dropout(collection, self.keep_prob)
+        y_hat = tf.layers.dense(collection, 1, name='combinging_linear',
                                kernel_initializer=initial_values,
                                kernel_regularizer=l1)
         return y_hat
@@ -194,21 +194,58 @@ class NNModel(object):
     @define_scope(scope='prediction')
     def prediction(self):
         l1 = tf.contrib.layers.l1_regularizer(self.penal)
-        initial_values = tf.initializers.random_normal(0.0, 0.0001)
+        initial_values = tf.initializers.random_normal(0.0, 0.01)
         layers = list()
         layers.append(self.X)
+        lg.debug('Shape of layers: %s', self.layers)
         with tf.variable_scope('NeuralNetwork'):
             for i in range(len(self.layers)-1):
                 lg.debug('Making layer %s', i)
+                lg.debug('Shape of input: %s, shape of output %s',
+                         layers[i].get_shape(),
+                         self.layers[i+1])
                 lay = tf.layers.dense(layers[i], self.layers[i+1],
                                       kernel_regularizer=l1,
-                                      kernel_initializer=initial_values,
+                                      # kernel_initializer=initial_values,
+                                      activation=tf.nn.relu,
                                       name='NN_'+str(i))
-                drop_out = tf.nn.dropout(lay, self.keep_prob,
-                                         name='dropout_'+str(i))
-                layers.append(drop_out)
+                layers.append(lay)
 
             y_hat = tf.layers.dense(layers[-1], 1, name='lastlayer',
-                                    kernel_initializer=initial_values,
+                                    # kernel_initializer=initial_values,
                                     kernel_regularizer=l1)
         return y_hat
+
+    # @define_scope(scope='prediction')
+    # def prediction(self):
+    #     l1 = tf.contrib.layers.l1_regularizer(self.penal)
+    #     initial_values = tf.initializers.random_normal(0.0, 0.01)
+
+    #     lay1 = tf.layers.dense(self.X, 30,
+    #                           kernel_regularizer=l1,
+    #                           # kernel_initializer=initial_values,
+    #                           activation=tf.nn.relu,
+    #                           name='NN_1')
+
+    #     lay2 = tf.layers.dense(lay1, 20,
+    #                            kernel_regularizer=l1,
+    #                            # kernel_initializer=initial_values,
+    #                            activation=tf.nn.relu,
+    #                            name='NN_2')
+
+    #     lay3 = tf.layers.dense(lay2, 20,
+    #                            kernel_regularizer=l1,
+    #                            # kernel_initializer=initial_values,
+    #                            activation=tf.nn.relu,
+    #                            name='NN_3')
+
+    #     lay4 = tf.layers.dense(lay3, 10,
+    #                            kernel_regularizer=l1,
+    #                            # kernel_initializer=initial_values,
+    #                            activation=tf.nn.relu,
+    #                             name='NN_4')
+
+    #     y_hat = tf.layers.dense(lay4, 1, name='lastlayer',
+    #                             # kernel_initializer=initial_values,
+    #                             kernel_regularizer=l1)
+    #     return y_hat

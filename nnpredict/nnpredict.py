@@ -126,8 +126,8 @@ class NNpredict(object):
                         lg.debug('Loss %s, Error %s', loss, er)
                     except tf.errors.OutOfRangeError:
                         break
-                    train_writer.add_summary(summary, i)
-                    lg.info('Epoch: %s: Loss %s, Error %s', i, loss, er)
+                train_writer.add_summary(summary, i)
+                lg.info('TRAIN: Epoch: %s: Loss %s, Error %s', i, loss, er)
                 if i % 10 == 0:
                     lg.debug('Finished epoch %s running dev set', i)
                     sess.run(dev_iter.initializer)
@@ -137,12 +137,13 @@ class NNpredict(object):
                                                           model.cost,
                                                           model.error],
                                                          feed_dict=dev_dict)
-                            lg.debug('Finished minibatch - dev')
+                            lg.debug('Finished minibatch - dev Err: %s', er)
                         except tf.errors.OutOfRangeError:
                             break
-                        lg.info('Epoch: %s: Loss %s, Error %s', i, loss, er)
-                        dev_writer.add_summary(summary, i)
+                    dev_writer.add_summary(summary, i)
+                    lg.info('DEV: Epoch: %s: Loss %s, Error %s', i, loss, er)
             # save model to disk
             tf.saved_model.simple_save(sess, export_dir, {'geno': geno_r},
                                        {'pheno': pheno_r})
+            return er
 
