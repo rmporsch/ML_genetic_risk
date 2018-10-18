@@ -113,10 +113,10 @@ class LinearModel(object):
         collection = tf.concat(collector, name='prediction_matrix', axis=1)
         # drop_out = tf.nn.dropout(collection, self.keep_prob)
         layer1 = tf.layers.dense(collection, 85, name='layer1',
-                                kernel_initializer=initial_values,
+                                activation=tf.nn.relu,
                                 kernel_regularizer=l1)
         y_hat = tf.layers.dense(layer1, 1, name='combinging_linear',
-                               kernel_initializer=initial_values,
+                               activation=tf.nn.relu,
                                kernel_regularizer=l1)
         return y_hat
 
