@@ -105,21 +105,17 @@ class LinearModel(object):
                     small_block = tf.boolean_mask(self.X, b, axis=1)
                     small_block.set_shape((self.batch_size, np.sum(b)))
                     lg.debug('Type of small_block: %s', small_block.dtype)
-                    if self.weights is not None:
-                        small_weights = tf.boolean_mask(self.weights, b, axis=1)
-                        small_weights.set_shape((1, np.sum(b)))
-                        initial_values = small_weights
                     y_ = tf.layers.dense(small_block, 1, kernel_regularizer=l1,
                                          kernel_initializer=initial_values)
-                    y_ = tf.cond(self.training,
-                                 lambda: self.noise(y_, 0.01),
-                                 lambda: tf.identity(y_))
                     collector.append(y_)
                     if i % 10 == 0:
                         lg.debug('Made tensors for LD block %s', i)
         collection = tf.concat(collector, name='prediction_matrix', axis=1)
         # drop_out = tf.nn.dropout(collection, self.keep_prob)
-        y_hat = tf.layers.dense(collection, 1, name='combinging_linear',
+        l1 = tf.layers.dense(collection, 85, name='l1',
+                                kernel_initializer=initial_values,
+                                kernel_regularizer=l1)
+        y_hat = tf.layers.dense(l1, 1, name='combinging_linear',
                                kernel_initializer=initial_values,
                                kernel_regularizer=l1)
         return y_hat
