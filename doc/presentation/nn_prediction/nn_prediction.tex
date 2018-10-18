@@ -35,10 +35,10 @@
   \end{itemize}
   Models:
   \begin{itemize}
-    \item Fully connected LD-layer with $L-1$ hidden layer
-    \item Clumped connected LD-layer with $L-1$ hidden layers
-    \item Convolutional NN with $L-1$ hidden layer
+    \item Fully connected LD-layer with $L-1$ hidden layer (FullDa)
+    \item Clumped connected LD-layer with $L-1$ hidden layers (ClumpDa)
   \end{itemize}
+  If $L=1$ neural network collapses to a penalized regression with $L_1$
 \end{frame}
 
 \section{Data preparation}
@@ -79,11 +79,26 @@
      \end{itemize}
     \end{column}
   \end{columns}
-  Issues: sample size limitations for development/testing dataset \\
-  I am currently only using the 1kG data.
+  Issues: sample size limitations for development/testing dataset 
 \end{frame}
 
-\section{Fully connected LD Layer}
+\begin{frame}[t]{UKB Data}
+  I also made use of the UKB with the following phenotypes:
+  \begin{itemize}
+    \item height
+    \item IQ
+  \end{itemize}
+  Data was split into training and dev set using caucsian samples only.
+  Dev set was set to be at least $10,000$ samples.
+
+  Some potential problems with the data structure:
+  \begin{itemize}
+    \item data was not shuffled 
+    \item currently data was not adjusted for potential confounders (unclear how important)
+  \end{itemize}
+\end{frame}
+
+\section{Fully connected LD Layer: FullDa}
 
 \begin{frame}[t]{Architecture}
   \begin{columns}[t]
@@ -110,7 +125,6 @@
         \item AdaGrad
         \item Mini-Batch gradient decent with $m=100$
         \item no early stopping ($epochs=100$)
-        \item no hyper-parameter optimization (lambda, number of hidden layers)
       \end{itemize}
     \end{column}
   \end{columns}
