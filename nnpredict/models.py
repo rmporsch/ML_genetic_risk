@@ -112,10 +112,10 @@ class LinearModel(object):
                         lg.debug('Made tensors for LD block %s', i)
         collection = tf.concat(collector, name='prediction_matrix', axis=1)
         # drop_out = tf.nn.dropout(collection, self.keep_prob)
-        l1 = tf.layers.dense(collection, 85, name='l1',
+        layer1 = tf.layers.dense(collection, 85, name='layer1',
                                 kernel_initializer=initial_values,
                                 kernel_regularizer=l1)
-        y_hat = tf.layers.dense(l1, 1, name='combinging_linear',
+        y_hat = tf.layers.dense(layer1, 1, name='combinging_linear',
                                kernel_initializer=initial_values,
                                kernel_regularizer=l1)
         return y_hat
