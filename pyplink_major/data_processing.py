@@ -325,3 +325,58 @@ class PreProcess(object):
                     lg.debug('Used command:\n%s', command)
                     subprocess.run(command)
 
+    @staticmethod
+    def _file_len(fname: str):
+        with open(fname) as f:
+            for i, l in enumerate(f):
+                pass
+        return i + 1
+
+    def count_variants(self, outfolder: str, n_sequence: list,
+                       plink_file: str = None):
+        if plink_file is None:
+            fam = pd.read_table(self.plink_files[0]+'.fam')
+            n = fam.shape[0]
+            assert n <= n_sequence[-1]
+            counter = dict()
+            for sample_size in n_sequence:
+                subset = fam.sample(sample_size)
+                subset.to_csv('.subset.temp', index=None, header=None,
+                              sep='\t')
+                counter[str(sample_size)] = 0
+                for p in self.plink_files:
+                    lg.debug('Processing %s', p)
+                    outpath = os.path.join(outfolder, p+'subset')
+                    command = [self.plink_binary, '--bfile', p,
+                               '--keep', '.subset.temp',
+                               '--make-just-bim',
+                               '--mac', '1',
+                               '--out', outpath]
+                    lg.debug("Use the following command \n%s", command)
+                    subprocess.run(command)
+                    num_var = self._file_len(outpath+'.bim')
+                    counter[str(sample_size)] += num_var
+            return counter
+        else:
+            fam = pd.read_table(plink_file+'.fam')
+            n = fam.shape[0]
+            lg.debug('Fam file has %s subjects', n)
+            lg.debug('Last size is %s', n_sequence[-1])
+            assert n_sequence[-1] <= n
+            outpath = os.path.join(outfolder, plink_file+'subset')
+            counter = dict()
+            for sample_size in n_sequence:
+                subset = fam.sample(sample_size)
+                subset.to_csv('.subset.temp', index=None, header=None,
+                              sep='\t')
+                counter[str(sample_size)] = 0
+                command = [self.plink_binary, '--bfile', plink_file,
+                           '--keep', '.subset.temp',
+                           '--make-just-bim',
+                           '--mac', '1',
+                           '--out', outpath]
+                lg.debug("Use the following command \n%s", command)
+                subprocess.run(command)
+                num_var = self._file_len(outpath+'.bim')
+                counter[str(sample_size)] += num_var
+            return counter
