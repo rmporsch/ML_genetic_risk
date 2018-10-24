@@ -41,7 +41,7 @@ class NNpredict(object):
                      l_rate: float = 0.001, penal: float = 0.005,
                      pheno_name: str = 'V1', tb_name: str = '',
                   in_model=LinearModel, export_dir: str = os.getcwd(),
-                  **kwargs):
+                  keep: float = 0.3, **kwargs):
         """
         Run Tensorflow model.
 
@@ -56,16 +56,19 @@ class NNpredict(object):
         :return: None
         """
         export_dir = os.path.join(export_dir, 'tf_model_'+pheno_name)
+        assert ((keep <= 1.0) and (keep >= 0.0))
         lg.info('Writing finished model to %s', export_dir)
         if os.path.isdir(export_dir):
             lg.info('output dir already exsists, dealting')
             shutil.rmtree(export_dir)
         now = datetime.now()
-        now = now.strftime('%Y/%m/%d/%H-%M-%S')
+        now = now.strftime('%Y-%m-%d-%H:%M:%S')
+        param = 'lambda:%s:l_rate:%s:batchsize:%s'.format(penal, l_rate,
+                                                          batch_size)
         lg.debug('Current time: %s', now)
         # tensorboard stuff
-        train_path = os.path.join(self.tb_path, 'train-'+tb_name+now)
-        dev_path = os.path.join(self.tb_path, 'dev-'+tb_name+now)
+        train_path = os.path.join(self.tb_path, 'train-'+tb_name+param+now)
+        dev_path = os.path.join(self.tb_path, 'dev-'+tb_name+param+now)
         lg.debug('Saving tensorboard at:\n train: %s \n test: %s',
                  train_path, dev_path)
 
