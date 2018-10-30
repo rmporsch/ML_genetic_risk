@@ -25,7 +25,7 @@ def get_genotypes(rsid, plink_path, sub_in):
     """
     reader = PyPlink(plink_path)
     n = reader.get_nb_samples()
-    genotypematrix = np.zeros((n, len(rsid)), dtype=np.int8)
+    genotypematrix = np.zeros((sum(sub_in), len(rsid)), dtype=np.int8)
     pos_index = 0
     for snp, genotype in reader.iter_geno_marker(rsid):
         if snp not in rsid:
