@@ -50,8 +50,8 @@ class NNpredict(object):
 
         now = datetime.now()
         now = now.strftime('%Y-%m-%d-%H:%M:%S')
-        param = 'lambda:%f:l_rate:%f:batchsize:%f'.format(penal, l_rate,
-                                                          batch_size)
+        param = 'lambda:%f:l_rate:%f:batchsize:%i' % (penal, l_rate,
+                                                      batch_size)
         lg.debug('Current time: %s', now)
         train_path = os.path.join(self.tb_path, 'train-'+tb_name+param+now)
         dev_path = os.path.join(self.tb_path, 'dev-'+tb_name+param+now)
@@ -155,14 +155,11 @@ class NNpredict(object):
                     sess.run(tf.local_variables_initializer())
                     while True:
                         try:
-                            # summary, loss, er = sess.run([merged_summary,
-                            #                               model.cost,
-                            #                               model.error_dev],
-                            #                              feed_dict=dev_dict)
-                            dev_error = sess.run(model.error_dev,
-                                                 feed_dict=dev_dict)
-                            lg.debug('Finished minibatch - dev Err: %s',
-                                     dev_error)
+                            summary, loss, er = sess.run([merged_summary,
+                                                          model.cost,
+                                                          model.error_dev],
+                                                         feed_dict=dev_dict)
+                            lg.debug('Finished minibatch - dev Err: %s', er)
                         except tf.errors.OutOfRangeError:
                             break
                     dev_writer.add_summary(summary, i)
