@@ -116,7 +116,6 @@ class LinearModel(object):
                                 activation=tf.nn.relu,
                                 kernel_regularizer=l1)
         y_hat = tf.layers.dense(layer1, 1, name='combinging_linear',
-                               activation=tf.nn.relu,
                                kernel_regularizer=l1)
         return y_hat
 
