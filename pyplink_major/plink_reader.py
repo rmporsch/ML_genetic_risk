@@ -24,6 +24,8 @@ def get_genotypes(rsid, plink_path, sub_in):
     :return: genotypematrix
     """
     reader = PyPlink(plink_path)
+    lg.debug('First item of sub_in is %s with %s', sub_in[0],
+             type(sub_in[0]))
     n = reader.get_nb_samples()
     genotypematrix = np.zeros((sum(sub_in), len(rsid)), dtype=np.int8)
     pos_index = 0
