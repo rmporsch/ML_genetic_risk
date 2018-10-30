@@ -43,6 +43,7 @@ class LinearModel(object):
         self.cost
         self.optimize
         self.error
+        self.error_dev
 
     def _make_block_id(self) -> list:
         output = list()
@@ -56,7 +57,6 @@ class LinearModel(object):
             if i % 10 == 0:
                 lg.debug('Processing LD block %s', i)
         return output
-
 
     @define_scope(scope='cost')
     def cost(self):
@@ -75,6 +75,21 @@ class LinearModel(object):
 
     @define_scope(scope='error')
     def error(self):
+        x = tf.concat([self.y, self.prediction], axis=1)
+        batch_size = tf.cast(tf.shape(x)[0], tf.float32)
+        means = tf.reduce_mean(x, axis=0)
+        d = tf.pow(tf.subtract(x, means), 2)
+        df = tf.reduce_sum(d, axis=0)
+        dd = tf.div(df, batch_size)
+        sds = tf.sqrt(dd)
+        cov = tf.reduce_mean(tf.reduce_prod(tf.subtract(x, means), axis=1))
+        corr = tf.div(cov, tf.reduce_prod(sds))
+        m, update_m = tf.metrics.mean(corr, name='mean_corr')
+        tf.summary.scalar('Correlation', update_m)
+        return update_m
+
+    @define_scope(scope='error_dev')
+    def error_dev(self):
         x = tf.concat([self.y, self.prediction], axis=1)
         batch_size = tf.cast(tf.shape(x)[0], tf.float32)
         means = tf.reduce_mean(x, axis=0)
@@ -150,6 +165,7 @@ class NNModel(object):
         self.cost
         self.optimize
         self.error
+        self.error_dev
 
     @define_scope(scope='cost')
     def cost(self):
@@ -181,6 +197,21 @@ class NNModel(object):
         tf.summary.scalar('Correlation', update_m)
         return update_m
 
+    @define_scope(scope='error_dev')
+    def error_dev(self):
+        x = tf.concat([self.y, self.prediction], axis=1)
+        batch_size = tf.cast(tf.shape(x)[0], tf.float32)
+        means = tf.reduce_mean(x, axis=0)
+        d = tf.pow(tf.subtract(x, means), 2)
+        df = tf.reduce_sum(d, axis=0)
+        dd = tf.div(df, batch_size)
+        sds = tf.sqrt(dd)
+        cov = tf.reduce_mean(tf.reduce_prod(tf.subtract(x, means), axis=1))
+        corr = tf.div(cov, tf.reduce_prod(sds))
+        m, update_m = tf.metrics.mean(corr, name='mean_corr')
+        tf.summary.scalar('Correlation', update_m)
+        return update_m
+
     @staticmethod
     def noise(input_layer, std):
         noise = tf.random_normal(shape=tf.shape(input_layer),
@@ -190,7 +221,6 @@ class NNModel(object):
     @define_scope(scope='prediction')
     def prediction(self):
         l1 = tf.contrib.layers.l1_regularizer(self.penal)
-        initial_values = tf.initializers.random_normal(0.0, 0.01)
         layers = list()
         layers.append(self.X)
         lg.debug('Shape of layers: %s', self.layers)
@@ -202,46 +232,10 @@ class NNModel(object):
                          self.layers[i+1])
                 lay = tf.layers.dense(layers[i], self.layers[i+1],
                                       kernel_regularizer=l1,
-                                      # kernel_initializer=initial_values,
                                       activation=tf.nn.relu,
                                       name='NN_'+str(i))
                 layers.append(lay)
 
             y_hat = tf.layers.dense(layers[-1], 1, name='lastlayer',
-                                    # kernel_initializer=initial_values,
                                     kernel_regularizer=l1)
         return y_hat
-
-    # @define_scope(scope='prediction')
-    # def prediction(self):
-    #     l1 = tf.contrib.layers.l1_regularizer(self.penal)
-    #     initial_values = tf.initializers.random_normal(0.0, 0.01)
-
-    #     lay1 = tf.layers.dense(self.X, 30,
-    #                           kernel_regularizer=l1,
-    #                           # kernel_initializer=initial_values,
-    #                           activation=tf.nn.relu,
-    #                           name='NN_1')
-
-    #     lay2 = tf.layers.dense(lay1, 20,
-    #                            kernel_regularizer=l1,
-    #                            # kernel_initializer=initial_values,
-    #                            activation=tf.nn.relu,
-    #                            name='NN_2')
-
-    #     lay3 = tf.layers.dense(lay2, 20,
-    #                            kernel_regularizer=l1,
-    #                            # kernel_initializer=initial_values,
-    #                            activation=tf.nn.relu,
-    #                            name='NN_3')
-
-    #     lay4 = tf.layers.dense(lay3, 10,
-    #                            kernel_regularizer=l1,
-    #                            # kernel_initializer=initial_values,
-    #                            activation=tf.nn.relu,
-    #                             name='NN_4')
-
-    #     y_hat = tf.layers.dense(lay4, 1, name='lastlayer',
-    #                             # kernel_initializer=initial_values,
-    #                             kernel_regularizer=l1)
-    #     return y_hat
