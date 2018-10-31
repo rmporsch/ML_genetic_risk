@@ -42,7 +42,7 @@ def get_genotypes(rsid, plink_path, sub_in):
 class Major_reader(object):
 
     def __init__(self, plink_file: str, pheno: str = None,
-                 ldblock_file: str = None):
+                 ldblock_file: str = None, shuffle: bool = False):
         """
         Reading plink files in sample major format.
 
@@ -58,6 +58,7 @@ class Major_reader(object):
                                  names=['chr', 'rsid', 'c', 'pos',
                                         'a1', 'a2'])
         self.p = self.bim.shape[0]
+        self.n = self.pheno.shape[0]
         self.chr = self.bim.chr.unique()
         lg.debug('Using %s number of SNPs', self.p)
         assert os.path.isfile(self.pheno_file)
@@ -66,6 +67,8 @@ class Major_reader(object):
         self._size = -(-self.p // 4)
         self._overflow = self._size*4 - self.p
         self._to_remove = [self.p + k for k in range(self._overflow)]
+        self._b_position_sub = self._make_subject_positions(self.n,
+                                                            self._size)
         lg.debug('Removing bytes: %s', self._to_remove)
         if ldblock_file is not None:
             self.ldblocks = self._check_ldblocks(ldblock_file)
@@ -85,6 +88,21 @@ class Major_reader(object):
             blocks = self._preprocessing_ldblock(blocks)
             pickle.dump(blocks, open(pickel_path, 'wb'))
         return blocks
+
+    @staticmethod
+    def _make_subject_positions(n, binary_size, shuffle=False):
+        """
+        Write a list of binary positions for each subject
+        :param n:
+        :param binary_size:
+        :return:
+        """
+        output = list()
+        output.append(3)
+        for i in range(1, n):
+            binary_position = output[i-1] + binary_size
+            output.append(binary_position)
+        return np.array(output)
 
     def _preprocessing_ldblock(self, blocks) -> dict:
         out = {}
@@ -210,33 +228,44 @@ class Major_reader(object):
                                                                        snps)
                 yield genotype_matrix
 
-    def _one_iter_geno(self, snps: list = None):
+    def _one_iter_geno(self, shuffle_array: list = None,
+                       snps: list = None, ):
         if snps is not None:
             assert self.p == len(snps)
+        if shuffle_array is None:
+            shuffle_array = np.arange(0, self.n, dtype=int)
+        lg.debug('Current shuffle is: %s', shuffle_array)
         with open(self.plink_file+'.bed', 'rb') as f:
-            input_bytes = f.read(3)
-            while input_bytes != '':
+            for s in self._b_position_sub[shuffle_array]:
+                f.seek(s)
                 input_bytes = f.read(self._size)
                 if input_bytes:
                     yield self._binary_genotype(input_bytes, snps)
                 else:
                     break
 
-    def _one_iter_pheno(self, pheno):
+    def _one_iter_pheno(self, pheno, shuffle_array: list = None):
+        if shuffle_array is None:
+            shuffle_array = np.arange(0, self.n, dtype=int)
         y = self.pheno[pheno]
-        for i in y:
+        for i in y[shuffle_array]:
             yield np.array([i]).reshape(1, 1)
 
-    def one_iter(self, pheno: str, snps: list = None):
+    def one_iter(self, pheno: str, snps: list = None,
+                 shuffle: bool = False):
         """
         Simple interator for one single sample at a time
 
         :param pheno: phenotype to iterate over
         :param snps: potential subset of SNPs (optional)
+        :param shuffle: should the data be shuffled
         :return: (geno, pheno)
         """
-        pheno_iter = self._one_iter_pheno(pheno)
-        geno_iter = self._one_iter_geno(snps)
+        ids = np.arange(0, self.n, dtype=int)
+        if shuffle:
+            np.random.shuffle(ids)
+        pheno_iter = self._one_iter_pheno(pheno, ids)
+        geno_iter = self._one_iter_geno(ids, snps)
 
         for geno, pheno in zip(geno_iter, pheno_iter):
             if np.isnan(pheno):

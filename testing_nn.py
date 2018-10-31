@@ -18,8 +18,8 @@ if __name__ == '__main__':
     ld_block_file = 'data/sim_1000G_chr10.ld_blocks.pickel'
     monster = NNpredict(train_plink, dev_plink, pheno_file)
     config_ln = {'ld_blocks': ld_block_file}
-    config_nn = {'layers': [125, 125, 80, 60, 40, 20]}
-    config_nn = {'layers': [30, 20, 20, 10]}
+    config_nn = {'layers': [10]}
+    #config_nn = {'layers': []}
 
     # monster.run_model(epochs=10,
     #                   batch_size=100,
@@ -29,10 +29,11 @@ if __name__ == '__main__':
     #                   tb_name='sample_majorMode',
     #                   in_model=LinearModel, ld_blocks=ld_block_file)
 
-    monster.run_model(epochs=150,
+    monster.run_model(epochs=400,
                       batch_size=100,
                       l_rate=0.001,
                       penal=0.01,
+                      keep=0.2,
                       pheno_name='V1',
                       tb_name='sample_majorMode',
                       in_model=NNModel, **config_nn)
