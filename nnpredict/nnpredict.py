@@ -79,7 +79,7 @@ class NNpredict(object):
                      l_rate: float = 0.001, penal: float = 0.005,
                      pheno_name: str = 'V1', tb_name: str = '',
                   in_model=LinearModel, export_dir: str = os.getcwd(),
-                  keep: float = 0.3, **kwargs):
+                  keep: float = 0.2, **kwargs):
         """
         Run Tensorflow model.
 
@@ -91,6 +91,7 @@ class NNpredict(object):
         :param tb_name:
         :param in_model: Class of LinearModel or NN
         :param export_dir:
+        :param keep: percentage of neurons to keep during training
         :return: None
         """
         assert ((keep <= 1.0) and (keep >= 0.0))
@@ -130,7 +131,7 @@ class NNpredict(object):
             sess.run(init)
             train_handle = sess.run(train_iter.string_handle())
             dev_handle = sess.run(dev_iter.string_handle())
-            train_dict = {keep_prob: 0.3, handle: train_handle}
+            train_dict = {keep_prob: keep, handle: train_handle}
             dev_dict = {keep_prob: 1.0, handle: dev_handle}
             lg.debug('Starting epochs.')
             for i in range(epochs):
@@ -148,21 +149,29 @@ class NNpredict(object):
                     except tf.errors.OutOfRangeError:
                         break
                 train_writer.add_summary(summary, i)
+                train_writer.flush()
                 lg.info('TRAIN: Epoch: %s: Loss %s, Error %s', i, loss, er)
                 if i % 10 == 0:
                     lg.debug('Finished epoch %s running dev set', i)
                     sess.run(dev_iter.initializer)
                     sess.run(tf.local_variables_initializer())
+                    testing = []
                     while True:
                         try:
-                            summary, loss, er = sess.run([merged_summary,
-                                                          model.cost,
-                                                          model.error_dev],
-                                                         feed_dict=dev_dict)
+                            summary, loss, er, y_pred, yy = sess.run([merged_summary,
+                                                                      model.cost,
+                                                                      model.error,
+                                                                      model.prediction,
+                                                                      pheno_r],
+                                                                     feed_dict=dev_dict)
+                            corr = np.corrcoef(y_pred.flatten(), yy.flatten())
+                            testing.append(corr[0, 1])
                             lg.debug('Finished minibatch - dev Err: %s', er)
                         except tf.errors.OutOfRangeError:
                             break
+                    lg.debug('MANUAL CORRELATION: %s', np.mean(testing))
                     dev_writer.add_summary(summary, i)
+                    dev_writer.flush()
                     lg.info('DEV: Epoch: %s: Loss %s, Error %s', i, loss, er)
             # save model to disk
             tf.saved_model.simple_save(sess, export_dir, {'geno': geno_r},

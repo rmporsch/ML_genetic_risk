@@ -4,6 +4,8 @@ import numpy as np
 import tensorflow as tf
 import logging
 import pickle
+import os
+import re
 
 lg = logging.getLogger(__name__)
 
@@ -128,11 +130,13 @@ class LinearModel(object):
         collection = tf.concat(collector, name='prediction_matrix', axis=1)
         # drop_out = tf.nn.dropout(collection, self.keep_prob)
         layer1 = tf.layers.dense(collection, 85, name='layer1',
-                                activation=tf.nn.relu,
+                                 kernle_initializer=tf.contrib.layers.xavier_initializer(),
+                                 activation=tf.nn.relu,
                                 kernel_regularizer=l1)
         y_hat = tf.layers.dense(layer1, 1, name='combinging_linear',
-                               activation=tf.nn.relu,
-                               kernel_regularizer=l1)
+                                kernle_initializer=tf.contrib.layers.xavier_initializer(),
+                                activation=tf.nn.relu,
+                                kernel_regularizer=l1)
         return y_hat
 
 
@@ -165,7 +169,7 @@ class NNModel(object):
         self.cost
         self.optimize
         self.error
-        self.error_dev
+        #self.error_dev
 
     @define_scope(scope='cost')
     def cost(self):
@@ -209,7 +213,7 @@ class NNModel(object):
         cov = tf.reduce_mean(tf.reduce_prod(tf.subtract(x, means), axis=1))
         corr = tf.div(cov, tf.reduce_prod(sds))
         m, update_m = tf.metrics.mean(corr, name='mean_corr')
-        tf.summary.scalar('Correlation', update_m)
+        tf.summary.scalar('Correlation_Dev', update_m)
         return update_m
 
     @staticmethod
@@ -217,6 +221,16 @@ class NNModel(object):
         noise = tf.random_normal(shape=tf.shape(input_layer),
                                  stddev=std)
         return input_layer + noise
+
+    @staticmethod
+    def tb_layers(layer):
+        n = layer.name
+        output_name = re.search('NN_[0-9]*', n).group(0)
+        weights = tf.get_default_graph().get_tensor_by_name(
+            os.path.split(n)[0]+'/kernel:0')
+        mean, var = tf.nn.moments(weights, axes=[0, 1])
+        tf.summary.scalar('Mean_'+output_name, mean)
+        tf.summary.scalar('Var_'+output_name, var)
 
     @define_scope(scope='prediction')
     def prediction(self):
@@ -232,10 +246,15 @@ class NNModel(object):
                          self.layers[i+1])
                 lay = tf.layers.dense(layers[i], self.layers[i+1],
                                       kernel_regularizer=l1,
-                                      activation=tf.nn.relu,
+                                      activation=tf.nn.elu,
+                                      kernel_initializer=tf.contrib.layers.xavier_initializer(),
                                       name='NN_'+str(i))
-                layers.append(lay)
+                self.tb_layers(lay)
+                lay_drop = tf.layers.dropout(lay, self.keep_prob)
+                layers.append(lay_drop)
 
-            y_hat = tf.layers.dense(layers[-1], 1, name='lastlayer',
+            y_hat = tf.layers.dense(layers[-1], 1, name='NN_00_last',
+                                    kernel_initializer=tf.contrib.layers.xavier_initializer(),
                                     kernel_regularizer=l1)
+            self.tb_layers(y_hat)
         return y_hat
