@@ -76,6 +76,12 @@ class Major_reader(object):
             self.ldblocks = None
 
     def _check_ldblocks(self, ldblocks_path: str):
+        """
+        Creates pickle file with LD block information
+
+        :param ldblocks_path: path to bed file with block information
+        :return: dict with ldblocks
+        """
         pickel_path = self.plink_file+'.ld_blocks.pickel'
         if os.path.isfile(pickel_path):
             with open(pickel_path, 'rb') as f:
@@ -90,11 +96,11 @@ class Major_reader(object):
         return blocks
 
     @staticmethod
-    def _make_subject_positions(n, binary_size, shuffle=False):
+    def _make_subject_positions(n, binary_size):
         """
         Write a list of binary positions for each subject
-        :param n:
-        :param binary_size:
+        :param n: number of subjects
+        :param binary_size: block size
         :return:
         """
         output = list()
@@ -105,6 +111,11 @@ class Major_reader(object):
         return np.array(output)
 
     def _preprocessing_ldblock(self, blocks) -> dict:
+        """
+        Checks for overlap between ldblock file and bim file
+        :param blocks: pd.DataFrame of blocks
+        :return: dict of blocks
+        """
         out = {}
         for chr in self.chr:
             subset_blocks = blocks[blocks.chr == chr]
@@ -121,6 +132,11 @@ class Major_reader(object):
         return out
 
     def _read_pheno(self, pheno: str = None):
+        """
+        Various checks and merging for pheno with fam file
+        :param pheno: path to pheno file
+        :return: merged phenotypes with fam file
+        """
         columns = ['FID', 'IID', 'PAT', 'MAT', 'SEX', 'PHENO']
         fam = pd.read_table(self.plink_file+'.fam', header=None)
         self.n = fam.shape[0]
@@ -168,6 +184,11 @@ class Major_reader(object):
         return mpheno
 
     def _check_magic_number(self, plink_file: str):
+        """
+        Checks the magic number of a plink file
+        :param plink_file: plink stem path
+        :return: True if sample major format
+        """
         variant_major = '6c1b01'
         sample_major = '6c1b00'
         with open(plink_file+'.bed', 'rb') as f:
@@ -184,6 +205,12 @@ class Major_reader(object):
 
     @staticmethod
     def _bgeno(input_bytes: bytes):
+        """
+        Converts bytes to array
+
+        :param input_bytes: binary array
+        :return:  numpy array
+        """
         a = bitarray(endian='little')
         a.frombytes(input_bytes)
         # lg.debug('How does the bytes look like: %s', a)
@@ -195,6 +222,12 @@ class Major_reader(object):
         return genotypes
 
     def _binary_genotype(self, input_bytes: bytes, snps: BoolVector = None):
+        """
+        Convert binary input to genotypes
+        :param input_bytes: binary input
+        :param snps: bool vector of SNPs to include
+        :return: genotype array of size 1,p
+        """
         genotypes = self._bgeno(input_bytes)
         if snps is not None:
             p = len(snps)
@@ -208,28 +241,15 @@ class Major_reader(object):
         genotypes[genotypes == 9] = 0
         return genotypes.reshape(1, p)
 
-    def _iter_geno(self, mini_batch_size: int, snps: BoolVector = None):
-        if snps is None:
-            p = self.p
-        else:
-            assert self.p == len(snps)
-            p = sum(snps)
-
-        with open(self.plink_file+'.bed', 'rb') as f:
-            input_bytes = f.read(3)
-            while True:
-                genotype_matrix = np.zeros((mini_batch_size, p))
-                for sample in range(mini_batch_size):
-                    input_bytes = f.read(self._size)
-                    if not input_bytes:
-                        f.seek(3)
-                        input_bytes = f.read(self._size)
-                    genotype_matrix[sample, :] = self._binary_genotype(input_bytes,
-                                                                       snps)
-                yield genotype_matrix
-
     def _one_iter_geno(self, shuffle_array: list = None,
-                       snps: list = None, ):
+                       snps: BoolVector = None, ):
+        """
+        Iterator for genotypes from plink file
+
+        :param shuffle_array: optional list of size n with the subject ids
+        :param snps: optional list of bool vector of which snps to include
+        :return: iterator
+        """
         if snps is not None:
             assert self.p == len(snps)
         if shuffle_array is None:
@@ -245,6 +265,13 @@ class Major_reader(object):
                     break
 
     def _one_iter_pheno(self, pheno, shuffle_array: list = None):
+        """
+        Iterator for phenotypes
+
+        :param pheno: name of phenotype
+        :param shuffle_array: optional list of size n with the subject ids
+        :return: iterator
+        """
         if shuffle_array is None:
             shuffle_array = np.arange(0, self.n, dtype=int)
         y = self.pheno[pheno]
@@ -254,7 +281,7 @@ class Major_reader(object):
     def one_iter(self, pheno: str, snps: list = None,
                  shuffle: bool = False):
         """
-        Simple interator for one single sample at a time
+        Simple iterator for one single sample at a time
 
         :param pheno: phenotype to iterate over
         :param snps: potential subset of SNPs (optional)
@@ -273,47 +300,4 @@ class Major_reader(object):
                 continue
             else:
                 yield geno, pheno
-
-
-    def _iter_pheno(self, pheno: str, mini_batch_size: int):
-        start = 0
-        end = mini_batch_size
-        index = np.arange(self.n)
-        iter_over_all = False
-        y = self.pheno[pheno]
-        while True:
-            if end >= self.n:
-                end = end - self.n
-            if start >= self.n:
-                start = start - self.n
-            bool_index = ~((index >= start) ^ (index < end))
-            if start > end:
-                bool_index = ~(bool_index)
-                iter_over_all = True
-            batch_index = index[bool_index]
-            yyield = np.zeros((mini_batch_size, 1))
-            for u, i in np.ndenumerate(batch_index):
-                yyield[u] = y[i]
-            start = np.abs(end)
-            end = start + mini_batch_size
-            yield yyield
-
-    def read(self, phenotype: str, mini_batch_size: int = 1,
-             snps: BoolVector = None):
-        """
-        Reader for plink major file format.
-
-        :param phenotype: str of phenotype name
-        :param mini_batch_size: how many samples to load
-        :param snps: an optional list of bool to inlcude/exclude certain snps
-        :return: genotype_matrix
-        """
-        pheno_iter = self._iter_pheno(phenotype, mini_batch_size)
-        geno_iter = self._iter_geno(mini_batch_size, snps)
-
-        for geno, pheno in zip(geno_iter, pheno_iter):
-            lg.debug('Shape of geno: %s Shape of pheno: %s', geno.shape,
-                     pheno.shape)
-            yield geno, pheno
-
 
