@@ -218,3 +218,32 @@ class TestMajor_reader(TestCase):
                 break
         expected = r[0]
         self.assertEqual(expected, np.sum(compare))
+
+    def test_shuffle(self):
+        out = Major_reader(self.sample_major, self.pheno_file)
+        mat = np.load(self.sample_major_numpy)[0]
+        n, p = mat.shape
+        pheno = pd.read_table(self.pheno_file)
+        pheno = pheno.V1.values
+        maxiter = 20
+        compare = list()
+        ids = np.arange(0, n, dtype=int)
+        np.random.shuffle(ids)
+        geno_iter = out._one_iter_geno(ids)
+        pheno_iter = out._one_iter_pheno('V1', ids)
+
+        for i, g, p in zip(ids, geno_iter, pheno_iter):
+            geno_comparision = np.equal(g, mat[i, :])
+            pheno_comparision = np.equal(p, pheno[i])
+            lg.debug('Index: %s: Geno: %s Pheno: %s',
+                     i, geno_comparision.all(), pheno_comparision.all())
+            if geno_comparision.all() and pheno_comparision.all():
+                compare.append(True)
+            else:
+                compare.append(False)
+        self.assertEqual(np.sum(compare), len(ids))
+
+
+
+
+

@@ -111,6 +111,16 @@ class LinearModel(object):
                                  stddev=std)
         return input_layer + noise
 
+    @staticmethod
+    def tb_layers(layer):
+        n = layer.name
+        output_name = re.search('LD_block[0-9]*', n).group(0)
+        weights = tf.get_default_graph().get_tensor_by_name(
+            os.path.split(n)[0]+'/kernel:0')
+        mean, var = tf.nn.moments(weights, axes=[0, 1])
+        tf.summary.scalar('Mean_'+output_name, mean)
+        tf.summary.scalar('Var_'+output_name, var)
+
     @define_scope(scope='prediction')
     def prediction(self):
         l1 = tf.contrib.layers.l1_regularizer(self.penal)
@@ -122,20 +132,21 @@ class LinearModel(object):
                     small_block = tf.boolean_mask(self.X, b, axis=1)
                     small_block.set_shape((self.batch_size, np.sum(b)))
                     lg.debug('Type of small_block: %s', small_block.dtype)
-                    y_ = tf.layers.dense(small_block, 1, kernel_regularizer=l1,
-                                         kernel_initializer=initial_values)
+                    y_ = tf.layers.dense(small_block, 1,
+                                         kernel_regularizer=l1,
+                                         activation=tf.nn.relu,
+                                         kernel_initializer=tf.contrib.layers.xavier_initializer())
                     collector.append(y_)
                     if i % 10 == 0:
                         lg.debug('Made tensors for LD block %s', i)
         collection = tf.concat(collector, name='prediction_matrix', axis=1)
-        # drop_out = tf.nn.dropout(collection, self.keep_prob)
         layer1 = tf.layers.dense(collection, 85, name='layer1',
-                                 kernle_initializer=tf.contrib.layers.xavier_initializer(),
+                                 kernel_initializer=tf.contrib.layers.xavier_initializer(),
                                  activation=tf.nn.relu,
-                                kernel_regularizer=l1)
-        y_hat = tf.layers.dense(layer1, 1, name='combinging_linear',
-                                kernle_initializer=tf.contrib.layers.xavier_initializer(),
-                                activation=tf.nn.relu,
+                                 kernel_regularizer=l1)
+        drop_out = tf.nn.dropout(layer1, self.keep_prob)
+        y_hat = tf.layers.dense(drop_out, 1, name='combinging_linear',
+                                kernel_initializer=tf.contrib.layers.xavier_initializer(),
                                 kernel_regularizer=l1)
         return y_hat
 
@@ -169,7 +180,6 @@ class NNModel(object):
         self.cost
         self.optimize
         self.error
-        #self.error_dev
 
     @define_scope(scope='cost')
     def cost(self):
@@ -201,21 +211,6 @@ class NNModel(object):
         tf.summary.scalar('Correlation', update_m)
         return update_m
 
-    @define_scope(scope='error_dev')
-    def error_dev(self):
-        x = tf.concat([self.y, self.prediction], axis=1)
-        batch_size = tf.cast(tf.shape(x)[0], tf.float32)
-        means = tf.reduce_mean(x, axis=0)
-        d = tf.pow(tf.subtract(x, means), 2)
-        df = tf.reduce_sum(d, axis=0)
-        dd = tf.div(df, batch_size)
-        sds = tf.sqrt(dd)
-        cov = tf.reduce_mean(tf.reduce_prod(tf.subtract(x, means), axis=1))
-        corr = tf.div(cov, tf.reduce_prod(sds))
-        m, update_m = tf.metrics.mean(corr, name='mean_corr')
-        tf.summary.scalar('Correlation_Dev', update_m)
-        return update_m
-
     @staticmethod
     def noise(input_layer, std):
         noise = tf.random_normal(shape=tf.shape(input_layer),
@@ -234,7 +229,7 @@ class NNModel(object):
 
     @define_scope(scope='prediction')
     def prediction(self):
-        l1 = tf.contrib.layers.l1_regularizer(self.penal)
+        l1 = tf.contrib.layers.l2_regularizer(self.penal)
         layers = list()
         layers.append(self.X)
         lg.debug('Shape of layers: %s', self.layers)
@@ -246,7 +241,7 @@ class NNModel(object):
                          self.layers[i+1])
                 lay = tf.layers.dense(layers[i], self.layers[i+1],
                                       kernel_regularizer=l1,
-                                      activation=tf.nn.elu,
+                                      activation=tf.nn.relu,
                                       kernel_initializer=tf.contrib.layers.xavier_initializer(),
                                       name='NN_'+str(i))
                 self.tb_layers(lay)

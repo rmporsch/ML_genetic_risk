@@ -42,7 +42,7 @@ def get_genotypes(rsid, plink_path, sub_in):
 class Major_reader(object):
 
     def __init__(self, plink_file: str, pheno: str = None,
-                 ldblock_file: str = None, shuffle: bool = False):
+                 ldblock_file: str = None):
         """
         Reading plink files in sample major format.
 
@@ -138,13 +138,16 @@ class Major_reader(object):
         :return: merged phenotypes with fam file
         """
         columns = ['FID', 'IID', 'PAT', 'MAT', 'SEX', 'PHENO']
-        fam = pd.read_table(self.plink_file+'.fam', header=None)
+        fam = pd.read_table(self.plink_file+'.fam', delim_whitespace=True,
+                            header=None)
         self.n = fam.shape[0]
         if fam.shape[1] > 5:
             fam.columns = columns
         elif fam.shape[1] == 5:
             fam.columns = columns[:-1]
         else:
+            lg.debug('%s', fam.head())
+            lg.debug('Shape of the fam file is %s', fam.shape)
             raise ValueError('The fam file seems wrongly formated')
         fam[['FID', 'IID']] = fam[['FID', 'IID']].applymap(str)
 
@@ -279,16 +282,18 @@ class Major_reader(object):
             yield np.array([i]).reshape(1, 1)
 
     def one_iter(self, pheno: str, snps: list = None,
-                 shuffle: bool = False):
+                 shuffle: bool = False, ids = None):
         """
         Simple iterator for one single sample at a time
 
         :param pheno: phenotype to iterate over
         :param snps: potential subset of SNPs (optional)
         :param shuffle: should the data be shuffled
+        :param ids: optional parameter with ids
         :return: (geno, pheno)
         """
-        ids = np.arange(0, self.n, dtype=int)
+        if ids is None:
+            ids = np.arange(0, self.n, dtype=int)
         if shuffle:
             np.random.shuffle(ids)
         pheno_iter = self._one_iter_pheno(pheno, ids)

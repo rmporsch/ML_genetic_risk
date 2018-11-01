@@ -29,10 +29,10 @@ class NNpredict(object):
         dd = tf.data.Dataset()
         output_shapes = (tf.TensorShape([None, self.p]),
                          tf.TensorShape([None, 1]))
-        train_dataset = dd.from_generator(lambda: self.dtrain.one_iter(pheno_name),
+        train_dataset = dd.from_generator(lambda: self.dtrain.one_iter(pheno_name, shuffle=True),
                                           output_shapes=output_shapes,
                                           output_types=(tf.float32, tf.float32))
-        dev_dataset = dd.from_generator(lambda: self.ddev.one_iter(pheno_name),
+        dev_dataset = dd.from_generator(lambda: self.ddev.one_iter(pheno_name, shuffle=True),
                                         output_shapes=output_shapes,
                                         output_types=(tf.float32, tf.float32))
         return train_dataset, dev_dataset
