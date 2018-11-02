@@ -45,7 +45,6 @@ class LinearModel(object):
         self.cost
         self.optimize
         self.error
-        self.error_dev
 
     def _make_block_id(self) -> list:
         output = list()
@@ -77,21 +76,6 @@ class LinearModel(object):
 
     @define_scope(scope='error')
     def error(self):
-        x = tf.concat([self.y, self.prediction], axis=1)
-        batch_size = tf.cast(tf.shape(x)[0], tf.float32)
-        means = tf.reduce_mean(x, axis=0)
-        d = tf.pow(tf.subtract(x, means), 2)
-        df = tf.reduce_sum(d, axis=0)
-        dd = tf.div(df, batch_size)
-        sds = tf.sqrt(dd)
-        cov = tf.reduce_mean(tf.reduce_prod(tf.subtract(x, means), axis=1))
-        corr = tf.div(cov, tf.reduce_prod(sds))
-        m, update_m = tf.metrics.mean(corr, name='mean_corr')
-        tf.summary.scalar('Correlation', update_m)
-        return update_m
-
-    @define_scope(scope='error_dev')
-    def error_dev(self):
         x = tf.concat([self.y, self.prediction], axis=1)
         batch_size = tf.cast(tf.shape(x)[0], tf.float32)
         means = tf.reduce_mean(x, axis=0)

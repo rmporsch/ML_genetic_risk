@@ -12,8 +12,8 @@ if __name__ == '__main__':
     train_plink = 'data/split_test/SampleMajor_train'
     dev_plink = 'data/split_test/SampleMajor_dev'
 
-    dev_plink = 'data/tf_keras_compare/sim_1000G_chr10_SampleMajor_dev'
-    train_plink = 'data/tf_keras_compare/sim_1000G_chr10_SampleMajor_train'
+    train_plink = 'data/sample_major/1kg/sim_1000G_chr10_SampleMajor_train'
+    dev_plink = 'data/sample_major/1kg/sim_1000G_chr10_SampleMajor_dev'
 
     ld_block_file = 'data/sim_1000G_chr10.ld_blocks.pickel'
     monster = NNpredict(train_plink, dev_plink, pheno_file)
@@ -21,19 +21,19 @@ if __name__ == '__main__':
     config_nn = {'layers': [10]}
     #config_nn = {'layers': []}
 
-    # monster.run_model(epochs=10,
-    #                   batch_size=100,
-    #                   l_rate=0.01,
-    #                   penal=0.01,
-    #                   pheno_name='V1',
-    #                   tb_name='sample_majorMode',
-    #                   in_model=LinearModel, ld_blocks=ld_block_file)
-
-    monster.run_model(epochs=400,
+    monster.run_model(epochs=200,
                       batch_size=100,
-                      l_rate=0.001,
+                      l_rate=0.0001,
                       penal=0.01,
-                      keep=0.2,
                       pheno_name='V1',
                       tb_name='sample_majorMode',
-                      in_model=NNModel, **config_nn)
+                      in_model=LinearModel, ld_blocks=ld_block_file)
+
+    # monster.run_model(epochs=400,
+    #                   batch_size=100,
+    #                   l_rate=0.001,
+    #                   penal=0.01,
+    #                   keep=0.2,
+    #                   pheno_name='V1',
+    #                   tb_name='sample_majorMode',
+    #                   in_model=NNModel, **config_nn)

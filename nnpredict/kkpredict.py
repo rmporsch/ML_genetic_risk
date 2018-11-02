@@ -104,7 +104,6 @@ if __name__ == '__main__':
     plt.title('model accuracy')
     plt.ylabel('accuracy')
     plt.xlabel('epoch')
-    #plt.legend(['test', 'train'], loc='upper left')
     plt.legend(loc='upper left')
     plt.savefig('keras_model.png')
     plt.show()
