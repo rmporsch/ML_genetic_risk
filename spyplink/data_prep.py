@@ -2,7 +2,7 @@ import logging
 from glob2 import glob
 import os
 import filecmp
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 BoolVector = List[bool]
 import pandas as pd
 import numpy as np
@@ -13,6 +13,12 @@ lg = logging.getLogger(__name__)
 class DataPrep(object):
 
     def __init__(self, plink_path: str, ld_block_path: str = None):
+        """
+        DataPrep class to collect and prepare input.
+
+        :param plink_path: path to plink files
+        :param ld_block_path: path to block files
+        """
         self._plink_path = plink_path
         self._ld_block_path = ld_block_path
         self.plink_files = self._expand_path(plink_path)
@@ -25,9 +31,12 @@ class DataPrep(object):
             self.ldblocks = None
 
     @staticmethod
-    def _expand_path(plink_path: str):
+    def _expand_path(plink_path: str) -> List:
         """
-        Expands path to multiple plink files
+        Search and list plink file paths
+
+        :param plink_path: path to plink file with wildcard
+        :return: list of plinks path
         """
         if '*' in plink_path:
             files = glob(plink_path)
@@ -39,7 +48,13 @@ class DataPrep(object):
             lg.debug('Selected plink files %s', [plink_path])
             return [plink_path]
 
-    def _check_files(self, plink_path: List):
+    def _check_files(self, plink_path: List) -> bool:
+        """
+        Check plink file
+
+        :param plink_path: plink file path
+        :return: status of the file
+        """
         plink_type = list()
         fam1 = plink_path[0]+'.fam'
         for p in plink_path:
@@ -55,7 +70,13 @@ class DataPrep(object):
             raise ValueError('Not all bed files are of the same type.')
 
     @staticmethod
-    def _check_plink_type(plink_path: str):
+    def _check_plink_type(plink_path: str) -> bool:
+        """
+        Check plink type for sample major format
+
+        :param plink_path: plink file path
+        :return: bool, true for sample major
+        """
         variant_major = '6c1b01'
         sample_major = '6c1b00'
         with open(plink_path+'.bed', 'rb') as f:
@@ -72,7 +93,13 @@ class DataPrep(object):
             raise ValueError('Could not recognice bed format.')
 
     @staticmethod
-    def _load_ldblockfile(ldblock_file):
+    def _load_ldblockfile(ldblock_file) -> Dict:
+        """
+        Load block file from bed file
+
+        :param ldblock_file: bed file path
+        :return: dictionary of blocks
+        """
         blocks = pd.read_csv(ldblock_file, sep='\t')
         blocks.columns = [k.strip() for k in blocks.columns]
         blocks['chr'] = blocks['chr'].str.strip('chr')
@@ -121,8 +148,8 @@ class DataPrep(object):
         """
         Short function to write train and dev to disk in required format.
 
-        :param train: pandas dataframe of train
-        :param dev: pandas dataframe of dev
+        :param train: pandas DataFrame of train
+        :param dev: pandas DataFrame of dev
         :return: None
         """
         train.to_csv('.train.temp', index=None, header=None, sep='\t')

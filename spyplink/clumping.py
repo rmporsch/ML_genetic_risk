@@ -26,11 +26,25 @@ class Clumping(DataPrep):
 
     @staticmethod
     def _ispath(p: str):
+        """
+        Check file path
+
+        :param p: path to file
+        :return: None
+        """
         if not os.path.exists(p):
             raise ValueError('Path %s does not exist' % p)
 
     def run_gwas(self, phenotype: str, mode: str = 'linear',
                  arguments: list = None):
+        """
+        Run GWAS wiht a given phenotype
+
+        :param phenotype: phenotype name
+        :param mode: mode ['linear', 'logistic']
+        :param arguments: additional arguments
+        :return: path to sumstat
+        """
 
         assert mode in ['linear', 'logistic']
 
@@ -52,6 +66,13 @@ class Clumping(DataPrep):
 
     @staticmethod
     def fix_gwas_output(input_path: str, output_path: str = None):
+        """
+        Fix summary stat file
+
+        :param input_path: input file path
+        :param output_path: output file path
+        :return: None
+        """
         if output_path is None:
             output_path = input_path
         temp_path = input_path+'.temp'
@@ -65,6 +86,16 @@ class Clumping(DataPrep):
 
     def _run_single_clumping(self, bfile: str, assoc_file: str,
                              p1: float, p2: float, r2: float):
+        """
+        Run a single clumping
+
+        :param bfile: bfile stem
+        :param assoc_file: summary stat
+        :param p1:
+        :param p2:
+        :param r2:
+        :return: file path to clumped sumstat
+        """
         nname = assoc_file.split('/')[-1]
         output_path = os.path.join(self.output_dir, nname)
         command = [self.plink_binary,
@@ -82,6 +113,15 @@ class Clumping(DataPrep):
 
     def run_clumping(self, bfile_association: list, p1: float,
                      p2: float, r2: float):
+        """
+        Clump data
+
+        :param bfile_association: list of lists with bfiles and sumstats
+        :param p1:
+        :param p2:
+        :param r2:
+        :return: outputfile paths as a list
+        """
         output_files = []
         for p in bfile_association:
             bfile, assoc_file = p

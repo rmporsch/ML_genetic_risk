@@ -22,6 +22,8 @@ class Converting(Clumping):
         Preprocessing of plink files for ML.
 
         :param plink_path: path to plink stem or stems (use *)
+        :param output_dir: path to output
+        :param pheno_file: path to phenotypes
         :param ld_block_path: path to LD blocks in bed format
         """
         Clumping.__init__(self, plink_path, pheno_file,
@@ -29,6 +31,12 @@ class Converting(Clumping):
 
     @staticmethod
     def _load_bim(bimfile):
+        """
+        Load bim file and add headers to it
+
+        :param bimfile:
+        :return: bim file as DataFrame
+        """
         headernames = ['chr', 'rsid', 'm', 'bp', 'a1', 'a2']
         bim = pd.read_table(bimfile, header=None, names=headernames)
         lg.debug('dtype of chr in bim file is %s', bim.chr.dtype)
