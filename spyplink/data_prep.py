@@ -16,6 +16,8 @@ class DataPrep(object):
         self._plink_path = plink_path
         self._ld_block_path = ld_block_path
         self.plink_files = self._expand_path(plink_path)
+        lg.info('Using the following plink files:\n%s',
+                self.plink_files)
         self.sample_major = self._check_files(self.plink_files)
         if ld_block_path is not None:
             self.ldblocks = self._load_ldblockfile(ld_block_path)
@@ -123,5 +125,5 @@ class DataPrep(object):
         :param dev: pandas dataframe of dev
         :return: None
         """
-        train.to_csv('.train.temp', index=None, header=None)
-        dev.to_csv('.dev.temp', index=None, header=None)
+        train.to_csv('.train.temp', index=None, header=None, sep='\t')
+        dev.to_csv('.dev.temp', index=None, header=None, sep='\t')
