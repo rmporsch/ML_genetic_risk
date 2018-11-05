@@ -1,5 +1,5 @@
 from unittest import TestCase
-from pyplink_major.plink_reader import Major_reader
+from spyplink.plink_reader import Major_reader
 from bitarray import bitarray
 import logging
 import numpy as np

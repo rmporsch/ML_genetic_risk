@@ -1,7 +1,7 @@
 from unittest import TestCase
 import logging
 import tensorflow as tf
-from pyplink_major.plink_reader import get_genotypes
+from spyplink.plink_reader import get_genotypes
 from nnpredict.nnpredict import NNpredict
 import pandas as pd
 import numpy as np

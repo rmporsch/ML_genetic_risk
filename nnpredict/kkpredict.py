@@ -1,6 +1,6 @@
 import logging
 import os
-from pyplink_major.plink_reader import Major_reader
+from spyplink.plink_reader import Major_reader
 import numpy as np
 import keras
 from keras import backend as K

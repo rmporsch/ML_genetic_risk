@@ -1,6 +1,6 @@
 from unittest import TestCase
 import logging
-from pyplink_major.data_processing import PreProcess
+from spyplink.converting import Converting
 import pandas as pd
 import numpy as np
 
@@ -14,14 +14,14 @@ class TestMajor_reader(TestCase):
         self.pfile = 'data/sim_1000G_chr10'
 
     def test_counter(self):
-        proc = PreProcess(self.pfile)
+        proc = Converting(self.pfile)
         bim = pd.read_table(self.pfile+'.bim')
         num_snps = bim.shape[0]
         simple_read = proc._file_len(self.pfile+'.bim')
         self.assertEqual(num_snps, simple_read)
 
     def test_count_by_n(self):
-        proc = PreProcess(self.pfile)
+        proc = Converting(self.pfile)
         fam = pd.read_table(self.pfile+'.fam')
         bim = pd.read_table(self.pfile+'.bim')
         num_snps = bim.shape[0]

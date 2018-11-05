@@ -5,7 +5,7 @@ import pickle
 import tensorflow as tf
 from nnpredict.models import LinearModel, NNModel
 from datetime import datetime
-from pyplink_major import plink_reader as pr
+from spyplink import plink_reader as pr
 import shutil
 
 lg = logging.getLogger(__name__)

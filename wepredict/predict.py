@@ -1,7 +1,7 @@
 """
 Use class for predicting phenotype from genotypes
 """
-from pyplink_major.plink_reader import Major_reader
+from spyplink.plink_reader import Major_reader
 from wepredict.pytorch_regression import pytorch_linear
 import logging
 

@@ -2,7 +2,7 @@
 
 import logging
 import argparse
-import pyplink_major.plink_reader as pr
+import spyplink.plink_reader as pr
 
 lg = logging.getLogger(__name__)
 parser = argparse.ArgumentParser(description='Convert plink files to numpy')

@@ -1,6 +1,6 @@
 """Unittests for plink import"""
 import unittest
-from pyplink_major.plink_reader import Genetic_data_read
+from spyplink.plink_reader import Genetic_data_read
 import logging as lg
 
 lg.basicConfig(level=lg.DEBUG)

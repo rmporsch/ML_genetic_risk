@@ -2,7 +2,7 @@
 """
 Script to convert plink files into sample major format and more
 """
-from pyplink_major.data_processing import PreProcess
+from spyplink.converting import Converting
 import argparse
 import logging
 
@@ -36,7 +36,7 @@ logging.basicConfig(level=args.log_level)
 
 
 if __name__ == '__main__':
-    model = PreProcess(args.plinkpath, args.ldblocks)
+    model = Converting(args.plinkpath, args.ldblocks)
 
     if args.trainsize.is_integer():
         train, dev = model.train_dev_split(args.batchsize,
