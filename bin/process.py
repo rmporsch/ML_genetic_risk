@@ -17,7 +17,7 @@ par.add_argument('train', type=str,
 par.add_argument('dev', type=str,
                  help='path to dev subjects')
 
-par.add_argument('pheno', type=str, dest='pheno',
+par.add_argument('pheno', type=str,
                  help='Phenotype to analyse')
 
 par.add_argument('-p1', default=0.0001, type=float, dest='p1',
@@ -47,6 +47,9 @@ lg = logging.getLogger(__name__)
 
 
 if __name__ == '__main__':
+    lg.debug('Plink file: %s', args.plinkpath)
+    lg.debug('Output folder: %s', args.output)
+    lg.debug('Pheno file: %s', args.pheno)
     p = Converting(args.plinkpath, args.output, args.pheno)
     assert len(p.plink_files) == 1
     train = pd.read_table(args.train)
