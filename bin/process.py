@@ -11,11 +11,11 @@ par.add_argument('plinkpath', type=str,
 par.add_argument('output', type=str,
                  help='Output folder.')
 
-par.add_argument('train', type=int,
-                 help='batch size')
+par.add_argument('train', type=str,
+                 help='path to train subjects')
 
-par.add_argument('dev', type=float,
-                 help='Total number of training samples or fraction of n')
+par.add_argument('dev', type=str,
+                 help='path to dev subjects')
 
 par.add_argument('pheno', type=str,
                  help='Phenotype to analyse')
@@ -48,16 +48,16 @@ lg = logging.getLogger(__name__)
 
 if __name__ == '__main__':
     p = Converting(args.plinkpath, args.output, args.pheno)
+    assert len(p.plink_files) == 1
     train = pd.read_table(args.train)
     dev = pd.read_table(args.dev)
     p.add_train_dev_split(train, dev)
     sumstat = p.run_gwas(args.pheno)
-    clumped_files = p.run_clumping(sumstat, args.output,
-                                   args.p1, args.p2, args.r2)
+    clumped_files = p.run_clumping(sumstat, args.p1, args.p2, args.r2)
     lg.info('Clumped files: %s', clumped_files)
-    for p, ss in clumped_files:
-        snp_list = pd.read_table(ss)
-        lg.debug('%s', snp_list.head())
-        p.convert_sample_major()
-
-
+    clumped_gwas = pd.read_table(clumped_files[0][1])
+    snps = clumped_gwas.SNP
+    snps.to_csv('.snps.list', index=False, header=None)
+    add_arguments = ['--extract', '.snps.list']
+    major_files = p.split_plink(add_arguments)
+    lg.info('Split output files %s', major_files)
