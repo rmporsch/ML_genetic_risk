@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 from spyplink.converting import Converting
 import argparse
 import logging
