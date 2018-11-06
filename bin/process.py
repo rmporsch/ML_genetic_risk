@@ -22,14 +22,14 @@ par.add_argument('dev', type=str,
 par.add_argument('pheno', type=str,
                  help='Phenotype to analyse')
 
-par.add_argument('-p1', default=0.01, type=float, dest='p1',
+par.add_argument('-p1', default=0.0001, type=float, dest='p1',
                  help='clumping threshold for p1')
 
 par.add_argument('-p2', default=0.01, type=float, dest='p2',
-                 help='clumping threshold for p1')
+                 help='clumping threshold for p2')
 
-par.add_argument('-r2', default=0.01, type=float, dest='r2',
-                 help='clumping threshold for p1')
+par.add_argument('-r2', default=0.5, type=float, dest='r2',
+                 help='clumping threshold for r2')
 
 par.add_argument('-ld', '--ldpath',
                  type=str, dest='ldblocks',
@@ -49,12 +49,16 @@ lg = logging.getLogger(__name__)
 
 
 if __name__ == '__main__':
+    lg.debug('Plink file: %s', args.plinkpath)
+    lg.debug('Output folder: %s', args.output)
+    lg.debug('Pheno file: %s', args.pheno)
     p = Converting(args.plinkpath, args.output, args.pheno)
     assert len(p.plink_files) == 1
     train = pd.read_table(args.train)
     dev = pd.read_table(args.dev)
     p.add_train_dev_split(train, dev)
-    sumstat = p.run_gwas(args.pheno)
+    args = ['--keep', '.train.temp']
+    sumstat = p.run_gwas(args.pheno, arguments=args)
     clumped_files = p.run_clumping(sumstat, args.p1, args.p2, args.r2)
     lg.info('Clumped files: %s', clumped_files)
     clumped_gwas = pd.read_table(clumped_files[0][1])

@@ -4,6 +4,7 @@ import shutil
 from spyplink.converting import Converting
 import pandas as pd
 import logging
+import subprocess
 
 logging.basicConfig(level=logging.DEBUG)
 lg = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ class TestMajor_reader(TestCase):
     def tearDown(self):
         shutil.rmtree(self.output)
         try:
-            os.remove('.snps.list')
+            # os.remove('.snps.list')
             os.remove('.train.temp')
             os.remove('.dev.temp')
         except ValueError:
@@ -77,3 +78,14 @@ class TestMajor_reader(TestCase):
         n = train_new.shape[0]
         lg.debug('Loaded %s samples from training file', n)
         self.assertEqual(n, train.shape[0])
+
+    def test_script(self):
+        script = 'bin/process.py'
+        command = ['python', script, self.OneKg, self.output,
+                   self.train, self.dev, self.pheno,
+                   '-p1', '0.0001', '-p2', '0.01', '-r2', '0.5', '-d']
+        subprocess.call(command, shell=True)
+        files = os.listdir(self.output)
+        lg.debug('%s', files)
+        #TODO list files
+
