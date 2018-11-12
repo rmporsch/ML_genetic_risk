@@ -67,8 +67,8 @@ if __name__ == '__main__':
     p.plink_binary = args.plink
     p.plink2_binary = args.plink2
     assert len(p.plink_files) == 1
-    train = pd.read_table(args.train)
-    dev = pd.read_table(args.dev)
+    train = pd.read_table(args.train, header=None)
+    dev = pd.read_table(args.dev, header=None)
     p.add_train_dev_split(train, dev)
     margs = ['--keep', '.train.temp']
     sumstat = p.run_gwas(args.phenotype, arguments=margs)
