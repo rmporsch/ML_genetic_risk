@@ -1,5 +1,5 @@
 from unittest import TestCase
-from nnpredict.kkpredict import DataGenerator
+from nnpredict.kk_model import DataGenerator
 import numpy as np
 import pandas as pd
 import logging
@@ -13,7 +13,7 @@ class TestDataGenerator(TestCase):
         self.plink_file = 'data/sim_1000G_chr10'
         self.sample_major = 'data/test'
         self.pheno_file = 'data/sim_1000G_chr10.txt'
-        self.ld_block_file = 'data/Berisa.EUR.hg19'
+        self.ld_block_file = 'data/Berisa.EUR.hg19.bed'
         self.sample_major_numpy = 'data/sample_major_1kg/sample_major_0.npy'
 
     def test__data_generation(self):
@@ -46,7 +46,16 @@ class TestDataGenerator(TestCase):
         is_equal_pheno = np.equal(y, pheno[index]).all()
         self.assertTrue(is_equal_pheno)
 
+    def test_split_generation(self):
+        keras_generator = DataGenerator(self.sample_major,
+                                        self.pheno_file,
+                                        'V1', 100, shuffle=False,
+                                        ldblock_file=self.ld_block_file)
 
-
-
-
+        x, y = keras_generator.__getitem__(0)
+        self.assertEqual(len(x), 85)
+        nrows = list()
+        for i in x:
+            nrows.append(i.shape[0])
+        num_unique = len(np.unique(nrows))
+        self.assertEqual(1, num_unique)

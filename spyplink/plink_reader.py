@@ -59,8 +59,9 @@ class Major_reader(object):
                                         'a1', 'a2'])
         self.p = self.bim.shape[0]
         self.n = self.pheno.shape[0]
-        self.chr = self.bim.chr.unique()
+        self.chrom = self.bim.chr.unique()
         lg.debug('Using %s number of SNPs', self.p)
+        lg.info('Detected %s chromosoms', self.chrom)
         assert os.path.isfile(self.pheno_file)
         assert os.path.isfile(self.plink_file+'.bed')
         self._is_sample_major = self._check_magic_number(self.plink_file)
@@ -117,10 +118,10 @@ class Major_reader(object):
         :return: dict of blocks
         """
         out = {}
-        for chr in self.chr:
-            subset_blocks = blocks[blocks.chr == chr]
-            subset_bim = self.bim[self.bim.chrom == chr]
-            out[chr] = []
+        for chrom in self.chrom:
+            subset_blocks = blocks[blocks.chr == chrom]
+            subset_bim = self.bim[self.bim.chr == chrom]
+            out[chrom] = []
             for index, row in subset_blocks.iterrows():
                 start = row['start']
                 end = row['stop']
@@ -128,7 +129,7 @@ class Major_reader(object):
                     (self.bim.pos >= start)
                     & (self.bim.pos <= end)
                     ].index.values
-                out[chr].append(rsids)
+                out[chrom].append(rsids)
         return out
 
     def _read_pheno(self, pheno: str = None):
@@ -257,7 +258,6 @@ class Major_reader(object):
             assert self.p == len(snps)
         if shuffle_array is None:
             shuffle_array = np.arange(0, self.n, dtype=int)
-        lg.debug('Current shuffle is: %s', shuffle_array)
         with open(self.plink_file+'.bed', 'rb') as f:
             for s in self._b_position_sub[shuffle_array]:
                 f.seek(s)
