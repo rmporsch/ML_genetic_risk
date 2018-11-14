@@ -15,7 +15,17 @@ matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 import pickle
 import pandas as pd
+import argparse
+from keras.callbacks import TensorBoard
 
+
+par = argparse.ArgumentParser(description='Convert plink files.')
+
+par.add_argument('model', type=str,
+                 help='model type')
+par.add_argument('-p', type=int, default=10, help='number of workers')
+
+args = par.parse_args()
 
 class DataGenerator(keras.utils.Sequence, Major_reader):
 
@@ -69,18 +79,71 @@ def correlation_coefficient_loss(y_true, y_pred):
     r = K.maximum(K.minimum(r, 1.0), -1.0)
     return r
 
+def nnmodel(input_n: int = 274):
+    model = Sequential()
+    model.add(Dense(units=85, activation='elu',
+                    input_dim=input_n,
+                    kernel_initializer='glorot_uniform',
+                    kernel_regularizer=regularizers.l1(0.01)))
+    model.add(Dropout(0.5))
+    model.add(Dense(units=60, activation='elu',
+                    kernel_initializer='glorot_uniform',
+                    kernel_regularizer=regularizers.l1(0.01)))
+    model.add(Dropout(0.5))
+    model.add(Dense(units=60, activation='elu',
+                    kernel_initializer='glorot_uniform',
+                    kernel_regularizer=regularizers.l1(0.01)))
+    model.add(Dropout(0.5))
+    model.add(Dense(units=60, activation='elu',
+                    kernel_initializer='glorot_uniform',
+                    kernel_regularizer=regularizers.l1(0.01)))
+    model.add(Dense(units=1, activation='linear',
+                    kernel_initializer='glorot_uniform',
+                    kernel_regularizer=regularizers.l1(0.01)))
+    opti = optimizers.Adagrad(lr=0.001)
+    model.compile(loss='mse', optimizer=opti,
+                  metrics=[correlation_coefficient_loss], )
+    return model
+
+def linear_model(input_n: int = 274):
+    model = Sequential()
+    model.add(Dense(units=1, activation='linear',
+                    input_dim=input_n,
+                    kernel_regularizer=regularizers.l1(0.01)))
+    opti = optimizers.Adagrad(lr=0.01)
+    model.compile(loss='mse', optimizer=opti,
+                  metrics=[correlation_coefficient_loss], )
+    return model
+
+def nnmodel_small(input_n: int = 274):
+    model = Sequential()
+    model.add(Dense(units=15, activation='elu',
+                    input_dim=input_n,
+                    kernel_initializer='glorot_uniform',
+                    kernel_regularizer=regularizers.l1(0.01)))
+    model.add(Dense(units=1, activation='linear',
+                    kernel_initializer='glorot_uniform',
+                    kernel_regularizer=regularizers.l1(0.01)))
+    opti = optimizers.Adagrad(lr=0.001)
+    model.compile(loss='mse', optimizer=opti,
+                  metrics=[correlation_coefficient_loss], )
+    return model
+
+
 
 if __name__ == '__main__':
     os.chdir('/home/rmporsch/projects/ML_genetic_risk')
     print(os.getcwd())
     # train_path = 'data/sample_major/1kg/clumped/sim_1000G_chr10_SampleMajor_train'
     # dev_path = 'data/sample_major/1kg/clumped/sim_1000G_chr10_SampleMajor_dev'
-    train_path = 'data/sample_major/ukb/clumped/maf_0.01_10_SampleMajortrain'
-    dev_path = 'data/sample_major/ukb/clumped/maf_0.01_10_SampleMajordev'
+    train_path = 'data/sample_major/ukb/clumped/nonlinear/maf_0.01_10_SampleMajortrain'
+    dev_path = 'data/sample_major/ukb/clumped/nonlinear/maf_0.01_10_SampleMajordev'
     # pheno_path = 'data/sim_1000G_chr10.txt'
-    pheno_path = 'data/simulated_chr10.txt'
-    # pheno_path = 'data/pseudophenos_mini.txt'
+    # pheno_path = 'data/simulated_chr10.txt'
+    pheno_path = 'data/pseudophenos_mini.txt'
     var = 'V1'
+    m = args.model
+    print(m)
 
     bim = pd.read_table(dev_path+'.bim', header=None)
     p = bim.shape[0]
@@ -94,68 +157,21 @@ if __name__ == '__main__':
     dev_generator = DataGenerator(dev_path, pheno_path, var, batch_size)
 
 
-    def nnmodel(input_n: int = 274):
-        model = Sequential()
-        model.add(Dense(units=85, activation='elu',
-                        input_dim=input_n,
-                        kernel_initializer='glorot_uniform',
-                        kernel_regularizer=regularizers.l1(0.01)))
-        model.add(Dropout(0.5))
-        model.add(Dense(units=60, activation='elu',
-                        kernel_initializer='glorot_uniform',
-                        kernel_regularizer=regularizers.l1(0.01)))
-        model.add(Dropout(0.5))
-        model.add(Dense(units=60, activation='elu',
-                        kernel_initializer='glorot_uniform',
-                        kernel_regularizer=regularizers.l1(0.01)))
-        model.add(Dropout(0.5))
-        model.add(Dense(units=60, activation='elu',
-                        kernel_initializer='glorot_uniform',
-                        kernel_regularizer=regularizers.l1(0.01)))
-        model.add(Dense(units=1, activation='linear',
-                        kernel_initializer='glorot_uniform',
-                        kernel_regularizer=regularizers.l1(0.01)))
-        opti = optimizers.Adagrad(lr=0.001)
-        model.compile(loss='mse', optimizer=opti,
-                      metrics=[correlation_coefficient_loss], )
-        return model
-    
-    def linear_model(input_n: int = 274):
-        model = Sequential()
-        model.add(Dense(units=1, activation='linear',
-                        input_dim=input_n,
-                        kernel_regularizer=regularizers.l1(0.01)))
-        opti = optimizers.Adagrad(lr=0.01)
-        model.compile(loss='mse', optimizer=opti,
-                      metrics=[correlation_coefficient_loss], )
-        return model
-
-    def nnmodel_small(input_n: int = 274):
-        model = Sequential()
-        model.add(Dense(units=15, activation='elu',
-                        input_dim=input_n,
-                        kernel_initializer='glorot_uniform',
-                        kernel_regularizer=regularizers.l1(0.01)))
-        model.add(Dense(units=1, activation='linear',
-                        kernel_initializer='glorot_uniform',
-                        kernel_regularizer=regularizers.l1(0.01)))
-        opti = optimizers.Adagrad(lr=0.001)
-        model.compile(loss='mse', optimizer=opti,
-                      metrics=[correlation_coefficient_loss], )
-        return model
-    
-
     # model = linear_model(p)
-    model = nnmodel_small(p)
+    models = {'linear': linear_model, 'nn_small': nnmodel_small, 'nn': nnmodel}
+    model = models[m](p)
+    tensorboard = TensorBoard(log_dir='./.tb_'+m, histogram_freq=0,
+                              write_graph=True, write_images=False)
 
     # Train model on dataset
     history =  model.fit_generator(generator=train_generator,
                         validation_data=dev_generator,
                         use_multiprocessing=True,
-                        workers=9, epochs=100)
+                        workers=args.p, epochs=100, callbacks=[tensorboard])
 
     # summarize history for accuracy
-    pickle.dump(history, open('keras_model_ukb_nn_small_15.pickle', 'wb'))
+    dump_name = 'non_linear_keras_model_uk_'+m+'.pickle'
+    pickle.dump(history, open(dump_name, 'wb'))
     fig = plt.figure()
     ax = fig.add_subplot(111)
     ax.plot(history.history['correlation_coefficient_loss'], label='train')
@@ -164,5 +180,5 @@ if __name__ == '__main__':
     ax.set_ylabel('accuracy')
     ax.set_xlabel('epoch')
     ax.legend(loc='upper right')
-    fig.savefig('keras_model_ukb_nn_small_15.png')
-
+    fig_name = 'non_linear_keras_model_uk_'+m+'.png'
+    fig.savefig(fig_name)
