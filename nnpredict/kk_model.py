@@ -152,9 +152,9 @@ def ld_nn(input_dims: List, drop_r: float = 0.5,
 
     final_model = Model(inputs, output=output)
 
-    # opti = optimizers.Adagrad(lr=l_rate)
-    # model.compile(loss='mse', optimizer=opti,
-    #               metrics=[correlation_coefficient_loss],)
+    opti = optimizers.Adagrad(lr=l_rate)
+    final_model.compile(loss='mse', optimizer=opti,
+                  metrics=[correlation_coefficient_loss],)
     return final_model
 
 def nnmodel(input_n: int, drop_r: float = 0.5,

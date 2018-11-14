@@ -66,9 +66,6 @@ if __name__ == '__main__':
     models = {'linear': linear_model, 'nn_small': nnmodel_small,
               'nn': nnmodel, 'ld_nn': ld_nn}
     model = models[m](p)
-    opti = optimizers.Adagrad(lr=0.001)
-    model.compile(loss='mse', optimizer=opti,
-                  metrics=[correlation_coefficient_loss],)
     tensorboard = TensorBoard(log_dir='./.tb/'+m)
 
     # Train model on dataset
