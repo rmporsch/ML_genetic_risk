@@ -136,9 +136,20 @@ notebooks/tensorboard
 *.fam
 
 *.data-00000-of-00001
+# server outputs
+*.e1*
+*.o1*
+# temp files
+.*
+# lassosum temp
+results/lassosum/1kg.*
+*.bim
+*.bed
+*.fam
 
 tf_model_V1/
 
 \.train\.temp
 
 \.dev\.temp
+

@@ -6,14 +6,16 @@ import argparse
 import os
 
 par = argparse.ArgumentParser(description='Submit models.')
+par.add_argument('train', type=str, help='path to train data (plink/sumstat)')
+par.add_argument('dev', type=str, help='path to dev data')
+par.add_argument('pheno', type=str, help='path to pheno data')
 par.add_argument('model', choices=['clumped', 'ldfull', 'lassosum'],
         help='Which model shall it be?')
-par.add_argument('data', choices=['ukb', 'onekg'],
-        help='Which data shall it be?')
 par.add_argument('-nl', default=1, dest='nl',
         type=int, help='number of lambdas')
 par.add_argument('-p', default='V1', dest='p',
         type=str, help='phenotype')
+
 par.add_argument("-v", "--verbose", action="store_const", dest="log_level",
                 const=logging.INFO, default=logging.WARNING)
 par.add_argument("-d", "--debug", action="store_const", dest="log_level",
@@ -47,14 +49,7 @@ if __name__ == '__main__':
             'ldfull': '/home/rmporsch/projects/ML_genetic_risk/results/ldfull.py',
             'lassosum': '/home/rmporsch/projects/ML_genetic_risk/results/lassosum/lassosum.r'}
     sample_sizes = {'ukb': 285000, 'onekg': 2200}
-    sumstats = {'ukb': '/home/rmporsch/projects/ML_genetic_risk/data/sample_major/ukb/clumped/maf_0.01_10.V1.glm.linear.clumped.merged',
-            'onekg': ''}
     ref = '/home/rmporsch/projects/ML_genetic_risk/data/sim_1000G_chr10' 
-    dev_variant_major = \
-            {'ukb': '/home2/groups/pcsham/users/rmporsch/ml_data/sample_major/ukb/clumped/lassosum/maf_0.01_10_VariantMajordev',
-            'onekg': '/home/rmporsch/projects/ML_genetic_risk/results/lassosum/1kg_variant_major_dev'}
-    pheno_paths = {'ukb': '/home/rmporsch/projects/ML_genetic_risk/data/simulated_chr10.txt',
-            'onekg': '/home/rmporsch/projects/ML_genetic_risk/data/sim_1000G_chr10.txt'}
     lambdas = np.exp(np.linspace(np.log(0.01), np.log(0.1), num=num_lambda))
     lg.debug('Using %s lambdas', lambdas)
 
