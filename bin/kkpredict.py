@@ -21,9 +21,17 @@ par.add_argument('model', type=str,
                  help='model type')
 par.add_argument('-p', type=int, default=10, help='number of workers')
 
-args = par.parse_args()
+par.add_argument("-v", "--verbose", action="store_const",
+                 dest="log_level", const=logging.INFO,
+                 default=logging.WARNING)
 
-logging.basicConfig(level=logging.INFO)
+par.add_argument("-d", "--debug",
+                 action="store_const", dest="log_level",
+                 const=logging.DEBUG)
+
+args = par.parse_args()
+logging.basicConfig(level=args.log_level)
+lg = logging.getLogger(__name__)
 
 
 if __name__ == '__main__':
@@ -38,12 +46,12 @@ if __name__ == '__main__':
     # pheno_path = 'data/pseudophenos_mini.txt'
     var = 'V1'
     m = args.model
-    print(m)
+    lg.info('Using %s to model', m)
 
     batch_size = 1000
     if '1000G' in train_path:
         batch_size = 100
-    print(batch_size)
+    lg.info('Batch size set to %s', batch_size)
 
     adpar = list()
     if m == 'ld_nn':
@@ -58,11 +66,10 @@ if __name__ == '__main__':
     models = {'linear': linear_model, 'nn_small': nnmodel_small,
               'nn': nnmodel, 'ld_nn': ld_nn}
     model = models[m](p)
-    # print(model.summary())
     opti = optimizers.Adagrad(lr=0.001)
     model.compile(loss='mse', optimizer=opti,
                   metrics=[correlation_coefficient_loss],)
-    tensorboard = TensorBoard(log_dir='./.tb_'+m)
+    tensorboard = TensorBoard(log_dir='./.tb/'+m)
 
     # Train model on dataset
     history = model.fit_generator(generator=train_generator,
