@@ -37,6 +37,9 @@ class DataGenerator(keras.utils.Sequence, Major_reader):
         self.dims = None
         if ldblock_file is not None:
             self.block_sequence = self._generate_ld_split_sequence()
+            # check dims
+            tx, ty = self.__getitem__(0)
+            self.dims = [k.shape[1] for k in tx]
         else:
             self.block_sequence = None
             self.dims = self.p
@@ -47,7 +50,6 @@ class DataGenerator(keras.utils.Sequence, Major_reader):
         :return: list with split points
         """
         block_sequence = list()
-        self.dims = list()
         pos = 0
         for u, k in enumerate(self.chrom):
             lg.debug('Making blocks for chr %s', k)
@@ -55,16 +57,12 @@ class DataGenerator(keras.utils.Sequence, Major_reader):
                 num = len(b)
                 if num == 0:
                     continue
-                self.dims.append(num)
                 pos += num
                 block_sequence.append(pos)
                 if i % 10 == 0:
                     lg.debug('Processed block %s', i)
         del block_sequence[-1]
-        lg.debug('Show dims %s', self.dims)
         lg.debug('Generated block sequence: %s', block_sequence)
-        lg.debug('Size of dims: %s Size of blocks: %s',
-                 len(self.dims), len(block_sequence))
         return block_sequence
 
     def _data_generation(self, list_id_temp, pheno_name):
@@ -88,7 +86,9 @@ class DataGenerator(keras.utils.Sequence, Major_reader):
             y[i] = p.flatten()
 
         if self.block_sequence is not None:
-            x = np.split(x, self.block_sequence, axis=1)
+            lg.debug('Dim of x: %s, size of p: %s',
+                     x.shape, self.p)
+            x = np.split(x, np.array(self.block_sequence), axis=1)
             lg.debug('Size of output: %s', len(x))
         return x, y
 

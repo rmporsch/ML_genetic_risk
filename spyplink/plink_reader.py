@@ -126,7 +126,7 @@ class Major_reader(object):
                 start = row['start']
                 end = row['stop']
                 rsids = subset_bim[
-                    (self.bim.pos >= start)
+                    (self.bim.pos > start)
                     & (self.bim.pos <= end)
                     ].index.values
                 out[chrom].append(rsids)

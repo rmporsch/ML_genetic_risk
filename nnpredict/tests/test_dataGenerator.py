@@ -11,7 +11,8 @@ class TestDataGenerator(TestCase):
 
     def setUp(self):
         self.plink_file = 'data/sim_1000G_chr10'
-        self.sample_major = 'data/test'
+        self.plink_file = 'data/sim_1000G_chr10'
+        self.sample_major = 'data/sample_major/1kg/sim_1000G_chr10_SampleMajor_dev'
         self.pheno_file = 'data/sim_1000G_chr10.txt'
         self.ld_block_file = 'data/Berisa.EUR.hg19.bed'
         self.sample_major_numpy = 'data/sample_major_1kg/sample_major_0.npy'
@@ -53,9 +54,8 @@ class TestDataGenerator(TestCase):
                                         ldblock_file=self.ld_block_file)
 
         x, y = keras_generator.__getitem__(0)
-        self.assertEqual(len(x), 85)
-        nrows = list()
-        for i in x:
-            nrows.append(i.shape[0])
-        num_unique = len(np.unique(nrows))
-        self.assertEqual(1, num_unique)
+        sizes_blocks = keras_generator.dims
+        sizes_x = [k.shape[1] for k in x]
+        for k, l in enumerate(zip(sizes_x, sizes_blocks)):
+            fx, fr = l
+            self.assertEqual(fx, fr, "Found missmatch at "+str(k))
