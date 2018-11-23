@@ -1,1 +1,2 @@
-include pyplink_major/bin/*
+include spyplink/bin/*
+include requirements.txt
