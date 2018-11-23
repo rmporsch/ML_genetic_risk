@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 import logging
 import os
 from keras.models import Sequential
@@ -9,16 +11,21 @@ from matplotlib import pyplot as plt
 import pickle
 import pandas as pd
 import argparse
-from keras.callbacks import TensorBoard
+from keras.callbacks import TensorBoard, ModelCheckpoint
 from nnpredict.kk_model import DataGenerator
 from nnpredict.kk_model import ld_nn, correlation_coefficient_loss
 from nnpredict.kk_model import nnmodel, nnmodel_small, linear_model
+from glob2 import glob
 
 
 par = argparse.ArgumentParser(description='Convert plink files.')
 
-par.add_argument('model', type=str,
-                 help='model type')
+par.add_argument('train', type=str, help='path to train file')
+par.add_argument('dev', type=str, help='path to dev file')
+par.add_argument('pheno', type=str, help="path to pheno")
+par.add_argument('pname', type=str, help='pheno name')
+par.add_argument('output', type=str, help='outputname')
+
 par.add_argument('-p', type=int, default=10, help='number of workers')
 
 par.add_argument("-v", "--verbose", action="store_const",
@@ -37,46 +44,43 @@ lg = logging.getLogger(__name__)
 if __name__ == '__main__':
     print(os.getcwd())
     ldblocks = 'data/Berisa.EUR.hg19.bed'
-    # train_path = 'data/sample_major/1kg/clumped/sim_1000G_chr10_SampleMajor_train'
-    # dev_path = 'data/sample_major/1kg/clumped/sim_1000G_chr10_SampleMajor_dev'
-    train_path = 'data/sample_major/ukb/clumped/nonlinear/maf_0.01_10_SampleMajortrain'
-    dev_path = 'data/sample_major/ukb/clumped/nonlinear/maf_0.01_10_SampleMajordev'
-    # pheno_path = 'data/sim_1000G_chr10.txt'
-    # pheno_path = 'data/simulated_chr10.txt'
-    pheno_path = 'data/pseudophenos_mini.txt'
-    var = 'V1'
-    m = args.model
-    lg.info('Using %s to model', m)
-
+    train = args.train
+    dev = args.dev
+    pheno = args.pheno
     batch_size = 1000
-    if '1000G' in train_path:
-        batch_size = 100
-    lg.info('Batch size set to %s', batch_size)
-
     adpar = list()
-    if m == 'ld_nn':
-        adpar = [ldblocks]
+    var = args.pname
 
-    train_generator = DataGenerator(train_path, pheno_path, var,
+    train_generator = DataGenerator(args.train, args.pheno, var,
                                     batch_size, *adpar)
-    dev_generator = DataGenerator(dev_path, pheno_path, var,
+    dev_generator = DataGenerator(args.dev, args.pheno, var,
                                   batch_size, *adpar)
     p = train_generator.dims
 
     models = {'linear': linear_model, 'nn_small': nnmodel_small,
               'nn': nnmodel, 'ld_nn': ld_nn}
-    model = models[m](p)
-    tensorboard = TensorBoard(log_dir='./.tb/'+m)
+    model = models['nn_small'](p)
+    tensorboard = TensorBoard(log_dir='./.tb/height_'+args.output)
+    checkpoint = ModelCheckpoint(args.output+'.model.{epoch:02d}_.checkpoint',
+            monitor='val_correlation_coefficient_loss',
+            mode='max', save_best_only=True, verbose=1)
 
     # Train model on dataset
     history = model.fit_generator(generator=train_generator,
                                   validation_data=dev_generator,
                                   use_multiprocessing=True,
-                                  workers=args.p, epochs=300,
-                                  callbacks=[tensorboard])
+                                  workers=args.p, epochs=50,
+                                  callbacks=[tensorboard, checkpoint])
+
+    dev_generator = DataGenerator(args.dev, args.pheno, var,
+                                  1, shuffle=False)
+    prediction = model.predict_generator(dev_generator, workers=args.p, use_multiprocessing=True)
+    pred_dump = args.output+'_pred.pickle'
+    pickle.dump(prediction, open(pred_dump, 'wb'))
+    model.save(args.output+'_model.keras.h5')
 
     # summarize history for accuracy
-    dump_name = 'non_linear_keras_model_uk_'+m+'.pickle'
+    dump_name = args.output+'_model.pickle'
     pickle.dump(history, open(dump_name, 'wb'))
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -85,6 +89,6 @@ if __name__ == '__main__':
     ax.set_title('Model Accuracy')
     ax.set_ylabel('accuracy')
     ax.set_xlabel('epoch')
-    ax.legend(loc='upper right')
-    fig_name = 'non_linear_keras_model_uk_'+m+'.png'
+    ax.legend()
+    fig_name = args.output+'.png'
     fig.savefig(fig_name)
