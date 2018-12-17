@@ -187,7 +187,25 @@ class Major_reader(object):
                 raise ValueError('No phenotype present')
         return mpheno
 
-    def _check_magic_number(self, plink_file: str):
+    @staticmethod
+    def _check_unique_subjects(pheno: pd.DataFrame) -> bool:
+        """
+        Check the pheno file for duplicated subjects
+        :param pheno: data frame of the phenotype file
+        :return: bool
+        """
+        n_samples = pheno.shape[0]
+        pheno_id = pheno.FID.map(str) + pheno.IID.map(str)
+        all_unique = pheno_id.nunique() == n_samples
+        if not all_unique:
+            lg.debug('There are %s duplicated subjects',
+                     n_samples - pheno_id.nunique())
+            return False
+        else:
+            return True
+
+    @staticmethod
+    def _check_magic_number(plink_file: str):
         """
         Checks the magic number of a plink file
         :param plink_file: plink stem path

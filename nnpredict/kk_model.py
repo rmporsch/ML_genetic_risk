@@ -25,7 +25,7 @@ class DataGenerator(keras.utils.Sequence, Major_reader):
         :param pheno_file: path of the pheno file
         :param pheno_name: name of the phenotype
         :param batch_size: size of the mini batches
-        :param ldblock_file: path of the ld block file (bed)
+        :param ldblock_file: path of the ld block file (bed) (optional)
         :param shuffle: bool if the data should be shuffled
         """
         Major_reader.__init__(self, plink_file, pheno_file, ldblock_file)
@@ -94,7 +94,8 @@ class DataGenerator(keras.utils.Sequence, Major_reader):
 
     def on_epoch_end(self):
         """
-        Shuffle or not on an epoch end
+        Shuffle or not on an epoch end.
+        This function is automatically called at the end of each epoch.
         :return:  None
         """
         if self.shuffle:
@@ -103,7 +104,13 @@ class DataGenerator(keras.utils.Sequence, Major_reader):
     def __len__(self):
         return int(np.floor(self.n / self.batch_size))
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: np.array):
+        """
+        Get specific item by index
+
+        :param index: subject index
+        :return: genotypes, phenotype
+        """
         indexes = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
 
         x, y = self._data_generation(indexes, self.pheno_name)
@@ -154,55 +161,85 @@ def ld_nn(input_dims: List, drop_r: float = 0.5,
 
     opti = optimizers.Adagrad(lr=l_rate)
     final_model.compile(loss='mse', optimizer=opti,
-                  metrics=[correlation_coefficient_loss],)
+                        metrics=[correlation_coefficient_loss],)
     return final_model
 
+
 def nnmodel(input_n: int, drop_r: float = 0.5,
-            l_rate: float = 0.001):
+            l_rate: float = 0.001, l_penal: float = 0.01):
+    """
+    Small Neural Network Model.
+    Single hidden neural network model with 15 nodes.
+
+    :param input_n: input dimensions
+    :param l_rate: learning rate
+    :param drop_r: drop out rate
+    :param l_penal: penalization factor
+    :return: keras model
+    """
     model = Sequential()
     model.add(Dense(units=85, activation='elu',
                     input_dim=input_n,
                     kernel_initializer='glorot_uniform',
-                    kernel_regularizer=regularizers.l1(0.01)))
+                    kernel_regularizer=regularizers.l1(l_penal)))
     model.add(Dropout(drop_r))
     model.add(Dense(units=60, activation='elu',
                     kernel_initializer='glorot_uniform',
-                    kernel_regularizer=regularizers.l1(0.01)))
+                    kernel_regularizer=regularizers.l1(l_penal)))
     model.add(Dropout(drop_r))
     model.add(Dense(units=60, activation='elu',
                     kernel_initializer='glorot_uniform',
-                    kernel_regularizer=regularizers.l1(0.01)))
+                    kernel_regularizer=regularizers.l1(l_penal)))
     model.add(Dropout(drop_r))
     model.add(Dense(units=60, activation='elu',
                     kernel_initializer='glorot_uniform',
-                    kernel_regularizer=regularizers.l1(0.01)))
+                    kernel_regularizer=regularizers.l1(l_penal)))
     model.add(Dense(units=1, activation='linear',
                     kernel_initializer='glorot_uniform',
-                    kernel_regularizer=regularizers.l1(0.01)))
+                    kernel_regularizer=regularizers.l1(l_penal)))
     opti = optimizers.Adagrad(lr=l_rate)
     model.compile(loss='mse', optimizer=opti,
                   metrics=[correlation_coefficient_loss], )
     return model
 
-def linear_model(input_n: int, l_rate=0.01):
+
+def linear_model(input_n: int, l_rate: float = 0.01, l_penal: float = 0.01):
+    """
+    Simple Linear Model with L1 regularization.
+
+    :param input_n: input dimensions
+    :param l_rate: learning rate
+    :param l_penal: penalization factor
+    :return: keras model
+    """
     model = Sequential()
     model.add(Dense(units=1, activation='linear',
                     input_dim=input_n,
-                    kernel_regularizer=regularizers.l1(0.01)))
+                    kernel_regularizer=regularizers.l1(l_penal)))
     opti = optimizers.Adagrad(lr=l_rate)
     model.compile(loss='mse', optimizer=opti,
                   metrics=[correlation_coefficient_loss], )
     return model
 
-def nnmodel_small(input_n: int, l_rate: float = 0.001):
+
+def nnmodel_small(input_n: int, l_rate: float = 0.001, l_penal: float = 0.01):
+    """
+    Small Neural Network Model.
+    Single hidden neural network model with 15 nodes.
+
+    :param input_n: input dimensions
+    :param l_rate: learning rate
+    :param l_penal: penalization factor
+    :return: keras model
+    """
     model = Sequential()
     model.add(Dense(units=15, activation='elu',
                     input_dim=input_n,
                     kernel_initializer='glorot_uniform',
-                    kernel_regularizer=regularizers.l1(0.01)))
+                    kernel_regularizer=regularizers.l1(l_penal)))
     model.add(Dense(units=1, activation='linear',
                     kernel_initializer='glorot_uniform',
-                    kernel_regularizer=regularizers.l1(0.01)))
+                    kernel_regularizer=regularizers.l1(l_penal)))
     opti = optimizers.Adagrad(lr=l_rate)
     model.compile(loss='mse', optimizer=opti,
                   metrics=[correlation_coefficient_loss], )

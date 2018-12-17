@@ -17,7 +17,7 @@ SetTuple = Tuple[str, str]
 class Converting(Clumping):
 
     def __init__(self, plink_path: str, output_dir: str,
-                 pheno_file: str, ld_block_path: str = None):
+                 pheno_file: str = None, ld_block_path: str = None):
         """
         Preprocessing of plink files for ML.
 
